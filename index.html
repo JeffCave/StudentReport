@@ -19,50 +19,126 @@
 	}
  </style>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" integrity="sha256-aYYnqVVhAJ4lDammP4Qybmxg3/HVpA7/sNSCntyCyu4=" crossorigin="anonymous"></script>
- <script>
-	var gradeData = [
-		{
-			"date":"2017-10-12",
-			"cat":"Tech Checks",
-			"item":"TechCheck 1",
-			"grade":{
-				"grade":8,
-				"of":10
-			},
-			"weight":{
-				"grade":null,
-				"of":0.08,
-			}
-		},
-		{
-			"date":"2017-10-18",
-			"cat":"Tech Checks",
-			"item":"TechCheck 2",
-			"grade":{
-				"grade":null,
-				"of":10
-			},
-			"weight":{
-				"grade":null,
-				"of":0.08,
-			}
-		},
-	]
-	gradeData = gradeData.map(d=>{
-		if(d.grade.grade){
-			d.pct = d.grade.grade / d.grade.of;
-			d.weight.grade = d.pct * d.weight.of;
-		}
-		return d;
-	});
- </script>
+ <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/5.3.1/pouchdb.min.js"></script>
+ <script language="javascript" type="text/javascript" src="https://cdn.rawgit.com/pouchdb/upsert/master/dist/pouchdb.upsert.min.js"></script>
+ 
  <script>
 	JSON.clone = JSON.clone || function(json){
 		json = JSON.stringify(json);
 		json = JSON.parse(json);
 		return json;
 	}
+	
+	app = {
+		KeyDelim: '.',
+		docsDiffer: function(oldDoc, newDoc){
+			oldDoc = JSON.clone(oldDoc);
+			newDoc = JSON.clone(newDoc);
+			
+			for(let field in oldDoc){
+				if(field.substr(0,1) === '_'){
+					delete oldDoc[field];
+				}
+			}
+			for(let field in newDoc){
+				if(field.substr(0,1) === '_'){
+					delete newDoc[field];
+				}
+			}
+			
+			oldDoc = JSON.stringify(oldDoc);
+			newDoc = JSON.stringify(newDoc);
+			
+			rtn = (oldDoc !== newDoc);
+			return rtn;
+		}
+	};
+	
  </script>
+
+ <script src="data.js"></script>
+ 
+ <script>
+	var db = new PouchDB('grades',{
+		auto_compaction: false, 
+		//adapter:'websql',
+	});
+	db.on('error', function (err) { debugger; });
+	//db.destroy();
+	var remoteCouch = false;
+	
+	db.upsert('_design/metrics',function(oldDoc){
+		console.debug('Generating database views...');
+		var newDoc = {};
+		newDoc.views = {
+			'grades': {
+				map: function(doc) {
+					// determine if the object belongs in this listing
+					if (!doc) return;
+					if (doc.isConfig) return;
+					if (doc.isExcused) return;
+					
+					var key = doc._id.split(app.KeyDelim);
+					if(key[0] !== 'grade') return;
+					key.shift();
+					
+					
+					emit(key,{
+						grade: doc.weighted.grade || 0,
+						of: doc.weighted.of,
+						pct: doc.weighted.grade / doc.weighted.of,
+					});
+				}.toString()
+				,reduce: function(keys, values, rereduce) {
+					grade = 0;
+					of = 0;
+					count = 0;
+					values.forEach(function(rec){
+						grade += rec.grade;
+						of += rec.of;
+						count += rec.count || 1;
+					});
+					return {
+						grade: grade,
+						of:    of,
+						pct:   grade/of,
+						count: count
+					};
+				}.toString()
+			}
+		};
+		
+		if(!app.docsDiffer(oldDoc,newDoc)) {
+			console.log('metrics calculations: current');
+			return false;
+		}
+		console.log('metrics calculations: rebuilding (change detected)');
+		return newDoc;
+				
+	}).then(function(){
+	
+		/**
+		* Import my data
+		*/
+		gradeData.forEach(function(rec){
+			let key = ["grade","student_id",rec.cat,rec.item,rec.date].join('.');
+			db.upsert(key, function(doc){
+				let differ = app.docsDiffer(doc,rec);
+				if(differ){
+					doc._id = key;
+					return rec;
+				}
+				return false;
+			}).then(function(rec){
+				//console.log(JSON.stringify(rec));
+			}).catch(function(err){
+				console.log(JSON.stringify(err));
+			});
+		});
+	}).catch(function(err){
+		console.log(err.message);
+	});
+</script>
 </head>
 <body>
 
@@ -94,119 +170,106 @@
  <summary>Grades (97%)</summary>
  <script>
 	'use strict';
-	
-	var cumulative = {
-		headers : [],
-		data:[{
-			date:"1900-01-01",
-			achieved:{values:[],total:0},
-			possible:{values:[],total:0},
-			estimate:{values:[],total:0},
-		}],
-	};
-	cumulative = gradeData
-		.sort(function(a,b){
-			if(a.date>b.date) return 1; 
-			if(a.date<b.date) return -1; 
-			return 0;
-		})
-		.reduce(function(a,d){
-			// copy the values from the last one
-			let rec = JSON.clone(a.data[0]);
-			a.data.unshift(rec);
-			// if the category is a new one, we need to add it to 
-			// every value field we have already seen go by, as 
-			// well as keep track of it in the headers array
-			if(!a.headers.includes(d.cat)){
-				a.headers.push(d.cat);
-				a.data.forEach((d)=>{
-					d.achieved.values.push(0);
-					d.possible.values.push(0);
-					d.estimate.values.push(0);
-				});
-			}
-			
-			let catIndex = a.headers.indexOf(d.cat);
-			
-			rec.date = d.date;
-			
-			rec.achieved.values[catIndex] += d.weight.grade;
-			rec.possible.values[catIndex] += d.weight.of;
-			rec.achieved.total += d.weight.grade;
-			rec.possible.total += d.weight.of;
-			
-			return a;
-		},cumulative)
-		;
-	// pop the initial value of the top of the stack
-	// we only put it there for initialization purposes
-	// then flip the array, because we built it backwards
-	cumulative.final = cumulative.data[0];
-	cumulative.data.pop();
-	cumulative.data.reverse();
-	
-	// alright... time to start rendering it
-	var table = d3.select("#studentgrades").append("table");
-	var thead = table.append("thead");
-	var tbody = table.append("tbody");
-	
-	// append the header row
-	thead.append("tr")
-		.selectAll("th")
-		.data(cumulative.headers)
-		.enter()
-			.append("th")
-			.text((column)=>{ return column; })
-			;
-	
-	// create a row for each object in the data
-	var rows = tbody.selectAll("tr")
-		.data(cumulative.data)
-		.enter()
-		.append("tr")
-		;
-	
-	rows.selectAll("th")
-		.data(function(d){
-			let rtn = "{{achieved}}% of {{possible}}% ({{pct}}%)"
-				.replace(/{{achieved}}/g,Math.floor(d.achieved.total * 100))
-				.replace(/{{possible}}/g,Math.floor(d.possible.total * 100))
-				.replace(/{{pct}}/g,Math.floor(100.0 * d.achieved.total / d.possible.total))
-				;
-			return [
-				d.date,
-				rtn
-			];
-		})
-		.enter()
-			.append("th")
-			.text(function(d){
-				return d;
+	(function(){
+		let opts = {
+			include_docs:true,
+			reduce:false,
+		};
+		db.query('metrics/grades', opts)
+			.then( function(result){
+		
+				// alright... time to start rendering it
+				let table = d3.select("#studentgrades").append("table");
+				let thead = table.append("thead");
+				let tbody = table.append("tbody");
+				
+				// append the header row
+				let head = JSON.clone(['somefield']);
+				head.unshift("Total");
+				head.unshift("");
+				thead.append("tr")
+					.selectAll("th")
+					.data(head)
+					.enter()
+						.append("th")
+						.text((column)=>{ return column; })
+						;
+				
+				// create a row for each object in the data
+				var rows = tbody.selectAll("tr")
+					.data(cumulative.data)
+					.enter()
+					.append("tr")
+					;
+				
+				rows.selectAll("th")
+					.data(function(d){
+						let pct = Math.floor(100.0 * d.achieved.total / d.possible.total);
+						pct = Number.isNaN(pct) ? 0 : pct;
+						let rtn = "{{achieved}}% of {{possible}}% ({{pct}}%)"
+							.replace(/{{achieved}}/g,Math.floor(d.achieved.total * 100))
+							.replace(/{{possible}}/g,Math.floor(d.possible.total * 100))
+							.replace(/{{pct}}/g,pct)
+							;
+						return [
+							d.date,
+							rtn
+						];
+					})
+					.enter()
+						.append("th")
+						.text(function(d){
+							return d;
+						})
+					;
+				
+				var cells = rows.selectAll('td')
+					.data(function (row) {
+						return row.achieved.values.map(function (achieved,i) {
+							let rtn = {
+								achieved: achieved,
+								possible: row.possible.values[i],
+							};
+							return rtn;
+						});
+					})
+					.enter()
+						.append('td')
+						.text(function (d) {
+						let pct = Math.floor(100.0 * d.achieved.total / d.possible.total);
+						pct = Number.isNaN(pct) ? 0 : pct;
+							let rtn = "{{achieved}} of {{possible}} ({{pct}})"
+								.replace(/{{achieved}}/g,Math.floor(d.achieved * 100))
+								.replace(/{{possible}}/g,Math.floor(d.possible * 100))
+								.replace(/{{pct}}/g, pct)
+							return rtn;
+						})
+						;
 			})
-		;
-	
-	var cells = rows.selectAll('td')
-		.data(function (row) {
-			return row.achieved.values.map(function (achieved,i) {
-				let rtn = {
-					achieved: achieved,
-					possible: row.possible.values[i],
-				};
-				return rtn;
-		    });
-		})
-		.enter()
-			.append('td')
-			.text(function (d) {
-				let rtn = "{{achieved}}% of {{possible}}% ({{pct}}%)"
-					.replace(/{{achieved}}/g,Math.floor(d.achieved * 100))
-					.replace(/{{possible}}/g,Math.floor(d.possible * 100))
-					.replace(/{{pct}}/g,Math.floor(100.0 * d.achieved / d.possible))
-				return rtn;
-			})
-			;
-	
+			.catch(function(err){
+				console.log(err);
+			});
+	})();	
  </script>
+ <style>
+	details#studentgrades table{
+		border:1px solid black;
+		border-collapse: collapse;
+		font-family:monospace;
+		font-size:0.75em;
+		
+	}
+	details#studentgrades td,th{
+		border:1px solid black;
+		padding: 0.5em;
+	}
+	/*
+	details#studentgrades th{
+		background-color:black;
+		color:white;
+	}
+	*/
+ </style>
 </details>
 
 <details>
