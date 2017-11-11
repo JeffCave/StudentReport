@@ -410,7 +410,7 @@
 				console.log(projections);
 				
 				// Set the dimensions of the canvas / graph
-				var margin = {top: 30, right: 20, bottom: 30, left: 50};
+				var margin = {top: 30, right: 50, bottom: 30, left: 20};
 				var width = 600 - margin.left - margin.right;
 				var height = 270 - margin.top - margin.bottom;
 				
@@ -419,12 +419,12 @@
 				var y = d3.scaleLinear().range([height, 0]);
 				// Scale the range of the data
 				x.domain(d3.extent(result.rows, function(d) { return app.parseDate(d.key[2]); }));
-				y.domain([0, d3.max(result.rows, function(d) { return d.value.of; })]);
+				y.domain([0, 1]);
 				
 				
 				// Define the axes
 				var xAxis = d3.axisBottom().scale(x).ticks(5);
-				var yAxis = d3.axisLeft().scale(y).ticks(5);
+				var yAxis = d3.axisRight().scale(y).ticks(5);
 				
 				// Define the line
 				var lineOf = d3.line()
@@ -504,6 +504,7 @@
 				// Add the Y Axis
 				svg.append("g")
 					.attr("class", "y axis")
+					.attr("transform", "translate("+width+",0)")
 					.call(yAxis)
 					;
 				
@@ -535,15 +536,37 @@
 						.attr('opacity', 1)
 						.attr('d', ['M',xToday,',',height,' Q ',xToday,',',height,' ',xToday,',',0,' Q ',xToday,',',height,' ',xToday,',',height].join(''))
 					;
+				
+				var gradeVals = projections.map((d)=>{
+					return projections[0];
+				});
+				var randVals = projections.map((d,i)=>{
+					d = JSON.clone(d);
+					d.possible = (!i)?d.possible:Math.random();
+					return d;
+				});
+				var accordianVals = projections.map((d,i)=>{
+					d = JSON.clone(d);
+					d.date = projections[0].date;
+					d.possible = i%2;
+					return d;
+				});
 				svg.append("path")
 					.attr("fill", "none")
 					.attr("stroke", "green")
 					.attr('opacity',0)
-					.attr('d', ['M',xToday,',',height,' Q ',xToday,',',height,' ',xToday,',',0,' Q ',xToday,',',height,' ',xToday,',',height].join(''))
+					.attr("d", linePossible(accordianVals))
 					.transition()
+						//wait for todayMarker to get drawn in
 						.delay(1200)
-						.duration(1000)
+						.duration(1)
 						.attr('opacity',1)
+					.transition()
+						.duration(500)
+						.attr("d", linePossible(randVals))
+					.transition()
+						.duration(1000)
+						.ease(d3.easeElasticOut)
 						.attr("d", linePossible(projections))
 					;
 				svg.append("path")
@@ -552,9 +575,13 @@
 					.attr('opacity',0)
 					.attr("d", linePossible(projections))
 					.transition()
-						.delay(1200)
-						.duration(1000)
+						// wait for possible line to finish
+						.delay(2700)
+						.duration(1)
 						.attr('opacity',1)
+					.transition()
+						.duration(500)
+						.ease(d3.easeElasticInOut)
 						.attr("d", lineExpected(projections))
 					;
 			})
