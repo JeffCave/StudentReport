@@ -359,6 +359,7 @@
 		};
 		db.query('metrics/gradesByDate', opts)
 			.then( function(result){
+				var projections = [];
 				result.rows = result.rows.reduce(function(a,d){
 					d = JSON.clone(d);
 					if(a.length === 0){ 
@@ -366,9 +367,31 @@
 					}
 					
 					let last = a[a.length-1];
-					d.value.grade += last.value.grade || 0;
 					d.value.of += last.value.of;
-					d.value.pct = d.value.grade / d.value.of;
+					// either calulcate the grade they have acheived
+					if(constants.today > d.key[2]){
+						d.value.grade += last.value.grade || 0;
+						d.value.pct = d.value.grade / d.value.of;
+					}
+					// or calcluate their projected grade
+					else{
+						d.value.pct = last.value.pct;
+						d.value.grade = last.value.grade;
+						if(!projections.length){
+							projections.unshift({
+								date: constants.today,
+								possible: last.value.grade,
+								avg: last.value.grade,
+								pct: d.value.pct,
+							});
+						}
+						projections.unshift({
+							date: d.key[2],
+							possible: projections[0].possible + (d.value.of - last.value.of),
+							avg: projections[0].pct * d.value.of,
+							pct: projections[0].pct,
+						});
+					}
 					
 					let enddate = app.parseDate(last.key[2]);
 					let fill = [];
@@ -382,7 +405,9 @@
 					}
 					return a;
 				},[]);
+				projections.reverse();
 				console.log(result);
+				console.log(projections);
 				
 				// Set the dimensions of the canvas / graph
 				var margin = {top: 30, right: 20, bottom: 30, left: 50};
@@ -403,6 +428,7 @@
 				
 				// Define the line
 				var lineOf = d3.line()
+					.curve(d3.curveStepBefore)
 					.x(function(d) { 
 						d = app.parseDate(d.key[2]); 
 						return x(d)
@@ -412,11 +438,38 @@
 					})
 					;
 				var lineGrade = d3.line()
+					.curve(d3.curveStepBefore)
 					.x(function(d) { 
 						d = app.parseDate(d.key[2]); 
 						return x(d); 
 					})
 					.y(function(d) { return y(d.value.grade); })
+					;
+				var linePossible = d3.line()
+					.curve(d3.curveCatmullRom)
+					.x(function(d) {
+						d = app.parseDate(d.date); 
+						d = x(d)
+						return d; 
+					})
+					.y(function(d) {
+						d = d.possible;
+						d = y(d);
+						return d;
+					})
+					;
+				var lineExpected = d3.line()
+					.curve(d3.curveCatmullRom)
+					.x(function(d) {
+						d = app.parseDate(d.date); 
+						d = x(d)
+						return d; 
+					})
+					.y(function(d) {
+						d = d.avg;
+						d = y(d);
+						return d;
+					})
 					;
 				
 				// Adds the svg canvas
@@ -470,17 +523,39 @@
 						.attr('d', ['M',xToday,',0 Q ',xToday,',',0,' ',xToday,',',height,' Q ',xToday,',',0,' ',xToday,',0'].join(''))
 					;
 */
-				var marker = svg.append('g').attr('id','today').append('path')
+				var todayMarker = svg.append('g').attr('id','today').append('path')
 					.attr("stroke", "red")
 					.attr("stroke-width", 3)
 					.attr("fill","red")
 					.attr('opacity',0)
-						.attr('d', ['M',0,',',height,' Q ',xToday,',',height,' ',xToday,',',height,' Q ',xToday,',',height,' ',width,',',height].join(''))
-					;
-				marker
-					.transition().duration(1000)
+					.attr('d', ['M',0,',',height,' Q ',xToday,',',height,' ',xToday,',',height,' Q ',xToday,',',height,' ',width,',',height].join(''))
+					.transition()
+						.delay(100)
+						.duration(1000)
 						.attr('opacity', 1)
 						.attr('d', ['M',xToday,',',height,' Q ',xToday,',',height,' ',xToday,',',0,' Q ',xToday,',',height,' ',xToday,',',height].join(''))
+					;
+				svg.append("path")
+					.attr("fill", "none")
+					.attr("stroke", "green")
+					.attr('opacity',0)
+					.attr('d', ['M',xToday,',',height,' Q ',xToday,',',height,' ',xToday,',',0,' Q ',xToday,',',height,' ',xToday,',',height].join(''))
+					.transition()
+						.delay(1200)
+						.duration(1000)
+						.attr('opacity',1)
+						.attr("d", linePossible(projections))
+					;
+				svg.append("path")
+					.attr("fill", "none")
+					.attr("stroke", "green")
+					.attr('opacity',0)
+					.attr("d", linePossible(projections))
+					.transition()
+						.delay(1200)
+						.duration(1000)
+						.attr('opacity',1)
+						.attr("d", lineExpected(projections))
 					;
 			})
 			.catch(function(err){
