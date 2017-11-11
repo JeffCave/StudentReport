@@ -17,6 +17,9 @@
 		width:0%;
 		background-color:green;
 	}
+	svg {
+		font: 14px 'Open Sans';
+	}
  </style>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" integrity="sha256-aYYnqVVhAJ4lDammP4Qybmxg3/HVpA7/sNSCntyCyu4=" crossorigin="anonymous"></script>
  <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/5.3.1/pouchdb.min.js"></script>
@@ -489,7 +492,7 @@
 					;
 				svg.append("path")
 					.attr("fill", "none")
-					.attr("stroke", "steelblue")
+					.attr("stroke", "green")
 					.attr("d", lineGrade(result.rows))
 					;
 				
@@ -524,7 +527,33 @@
 						.attr('d', ['M',xToday,',0 Q ',xToday,',',0,' ',xToday,',',height,' Q ',xToday,',',0,' ',xToday,',0'].join(''))
 					;
 */
-				var todayMarker = svg.append('g').attr('id','today').append('path')
+				var todayMarker = svg.append('g').attr('id','today');
+				todayMarker.append('text')
+					.attr('font-size',10)
+					.attr('opacity',0)
+					.text(constants.today)
+					;
+					
+				var textSize = Array.from(document.querySelectorAll('g#today text'))[0].getBoundingClientRect();
+				textSize.x = xToday - (textSize.width/2)
+				todayMarker.select("g#today > text")
+					.attr('x',textSize.x)
+					.attr('y',textSize.height+2.5)
+					;
+				
+				todayMarker.append('rect')
+					.attr('x',textSize.x-10)
+					.attr('y', 0)
+					.attr('width',textSize.width +20)
+					.attr('height',textSize.height +10)
+					.attr('stroke','red')
+					.attr('fill','rgba(255,0,0,0.25)')
+					.attr('stroke-width',2)
+					.attr('opacity',0)
+					;
+				var rectSize = JSON.clone(Array.from(document.querySelectorAll('g#today rect'))[0].getBoundingClientRect());
+				rectSize.x = xToday - (textSize.width/2) - 10;
+				todayMarker.append('path')
 					.attr("stroke", "red")
 					.attr("stroke-width", 3)
 					.attr("fill","red")
@@ -534,9 +563,37 @@
 						.delay(100)
 						.duration(1000)
 						.attr('opacity', 1)
-						.attr('d', ['M',xToday,',',height,' Q ',xToday,',',height,' ',xToday,',',0,' Q ',xToday,',',height,' ',xToday,',',height].join(''))
+						.attr('d', [
+							'M',xToday,',',height,
+							' Q ',xToday,',',height,' ',xToday,',',rectSize.height,
+							' Q ',xToday,',',height,' ',xToday,',',height
+							].join(''))
 					;
-				
+				todayMarker.select("g#today > rect")
+					.attr('x',xToday)
+					.attr('y', rectSize.height)
+					.attr('width',0)
+					.attr('height',0)
+					.attr('opacity',1)
+					.attr('rx',5)
+					.attr('ry',5)
+					.transition()
+						.delay(500)
+						.duration(500)
+						.attr('x',rectSize.x)
+						.attr('width',rectSize.width)
+					.transition()
+						.duration(500)
+						.attr('y',0)
+						.attr('height',rectSize.height)
+					;
+				todayMarker.select("g#today > text")
+					.transition()
+						.delay(1000)
+						.duration(1000)
+						.attr('opacity',1)
+					;
+
 				var gradeVals = projections.map((d)=>{
 					return projections[0];
 				});
@@ -553,17 +610,13 @@
 				});
 				svg.append("path")
 					.attr("fill", "none")
-					.attr("stroke", "green")
+					.attr("stroke", "steelblue")
 					.attr('opacity',0)
 					.attr("d", linePossible(accordianVals))
 					.transition()
-						//wait for todayMarker to get drawn in
 						.delay(1200)
 						.duration(1)
 						.attr('opacity',1)
-					.transition()
-						.duration(500)
-						.attr("d", linePossible(randVals))
 					.transition()
 						.duration(1000)
 						.ease(d3.easeElasticOut)
@@ -571,17 +624,16 @@
 					;
 				svg.append("path")
 					.attr("fill", "none")
-					.attr("stroke", "green")
+					.attr("stroke", "steelblue")
 					.attr('opacity',0)
 					.attr("d", linePossible(projections))
 					.transition()
-						// wait for possible line to finish
-						.delay(2700)
+						.delay(2300)
 						.duration(1)
 						.attr('opacity',1)
 					.transition()
-						.duration(500)
-						.ease(d3.easeElasticInOut)
+						.duration(1000)
+						.ease(d3.easeElasticOut)
 						.attr("d", lineExpected(projections))
 					;
 			})
