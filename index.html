@@ -23,14 +23,20 @@
  <script language="javascript" type="text/javascript" src="https://cdn.rawgit.com/pouchdb/upsert/master/dist/pouchdb.upsert.min.js"></script>
  
  <script>
+	'use strict';
 	JSON.clone = JSON.clone || function(json){
 		json = JSON.stringify(json);
 		json = JSON.parse(json);
 		return json;
 	}
 	
-	app = {
+	var constants = {
 		KeyDelim: '.',
+		today: (new Date()).toISOString().substr(0,10),
+	}
+	
+	var app = {
+		KeyDelim: constants.KeyDelim,
 		docsDiffer: function(oldDoc, newDoc){
 			oldDoc = JSON.clone(oldDoc);
 			newDoc = JSON.clone(newDoc);
@@ -51,7 +57,10 @@
 			
 			rtn = (oldDoc !== newDoc);
 			return rtn;
-		}
+		},
+		parseDate: d3.timeParse("%Y-%m-%d"),
+		formatDate: d3.timeFormat("%Y-%m-%d"),
+
 	};
 	
  </script>
@@ -82,11 +91,54 @@
 					if(key[0] !== 'grade') return;
 					key.shift();
 					
+//					doc.grade.pct = doc.grade.grade/doc.grade.of;
+//					doc.weight.grade = doc.grade.pct * doc.weight.of;
+					
 					
 					emit(key,{
-						grade: doc.weighted.grade || 0,
-						of: doc.weighted.of,
-						pct: doc.weighted.grade / doc.weighted.of,
+						grade: doc.weight.grade || 0,
+						of: doc.weight.of,
+//						pct: doc.weighted.grade / doc.weighted.of,
+					});
+				}.toString()
+				,reduce: function(keys, values, rereduce) {
+					grade = 0;
+					of = 0;
+					count = 0;
+					values.forEach(function(rec){
+						grade += rec.grade;
+						of += rec.of;
+						count += rec.count || 1;
+					});
+					return {
+						grade: grade,
+						of:    of,
+						pct:   grade/of,
+						count: count
+					};
+				}.toString()
+			},
+			'gradesByDate': {
+				map: function(doc) {
+					// determine if the object belongs in this listing
+					if (!doc) return;
+					if (doc.isConfig) return;
+					if (doc.isExcused) return;
+					
+					var key = doc._id.split(app.KeyDelim);
+					if(key[0] !== 'grade') return;
+					key.shift();
+					// move the date from the end to the start
+					let classId = key.shift();
+					let studentId = key.shift();
+					let gradeDate = key.pop();
+					key.unshift(gradeDate);
+					key.unshift(studentId);
+					key.unshift(classId);
+					
+					emit(key,{
+						grade: doc.weight.grade || 0,
+						of: doc.weight.of,
 					});
 				}.toString()
 				,reduce: function(keys, values, rereduce) {
@@ -121,11 +173,17 @@
 		* Import my data
 		*/
 		gradeData.forEach(function(rec){
-			let key = ["grade","student_id",rec.cat,rec.item,rec.date].join('.');
+			let key = ["grade","logprog",rec.student,rec.cat,rec.item,rec.date].join(app.KeyDelim);
 			db.upsert(key, function(doc){
-				let differ = app.docsDiffer(doc,rec);
-				if(differ){
-					doc._id = key;
+				rec.grade.grade = rec.grade.grade || 0;
+				rec.grade.pct = rec.grade.pct || 0;
+				rec.weight.grade = rec.weight.grade || 0;
+				if(rec.grade.of){
+					rec.grade.pct = rec.grade.grade / rec.grade.of;
+					rec.weight.grade = rec.grade.pct * rec.weight.of;
+				}
+				if(app.docsDiffer(doc,rec)){
+					rec._id = key;
 					return rec;
 				}
 				return false;
@@ -168,23 +226,34 @@
 
 <details id="studentgrades" open>
  <summary>Grades (97%)</summary>
- <script>
+ <!--script>
 	'use strict';
 	(function(){
 		let opts = {
 			include_docs:true,
 			reduce:false,
+			//group:true,
+			//group_level:3,
+			startkey:null,
+			endkey:{},
 		};
-		db.query('metrics/grades', opts)
+		db.query('metrics/gradesByDate', opts)
 			.then( function(result){
-		
+				
+				console.debug(result);
 				// alright... time to start rendering it
 				let table = d3.select("#studentgrades").append("table");
 				let thead = table.append("thead");
 				let tbody = table.append("tbody");
 				
 				// append the header row
-				let head = JSON.clone(['somefield']);
+				let head = Object
+					.keys(result.rows.reduce(function(a,d){
+						a[d.doc.cat] = null;
+						return a;
+					},{}))
+					.sort()
+					;
 				head.unshift("Total");
 				head.unshift("");
 				thead.append("tr")
@@ -195,20 +264,46 @@
 						.text((column)=>{ return column; })
 						;
 				
+				if(result.rows.length < 1) return;
+				
+				let cummulative = result.rows.reduce(function(a,d){
+					a[d.doc.date] = a[d.doc.date] || {
+						vals:{},
+						date:d.doc.date,
+						total:JSON.parse(JSON.stringify(d.value))
+					};
+					let rec = a[d.doc.date];
+					rec.vals[d.doc.cat] = rec.vals[d.doc.cat] || {grade:0,of:0};
+					rec.vals[d.doc.cat].grade += d.value.grade || 0;
+					rec.vals[d.doc.cat].of += d.value.of || 0;
+					return a;
+				},{});
+				cummulative = Object.keys(cummulative)
+					.map(function(d){
+						return cummulative[d];
+					})
+					.sort(function(a,b){
+						a = parseInt(a.date.replace(/[^0-9]/g,''));
+						b = parseInt(b.date.replace(/[^0-9]/g,''));
+						rtn = a-b;
+						return rtn;
+					})
+					;
+				
 				// create a row for each object in the data
 				var rows = tbody.selectAll("tr")
-					.data(cumulative.data)
+					.data(cummulative)
 					.enter()
 					.append("tr")
 					;
 				
 				rows.selectAll("th")
 					.data(function(d){
-						let pct = Math.floor(100.0 * d.achieved.total / d.possible.total);
+						let pct = Math.floor(100.0 * d.total.grade / d.total.of);
 						pct = Number.isNaN(pct) ? 0 : pct;
 						let rtn = "{{achieved}}% of {{possible}}% ({{pct}}%)"
-							.replace(/{{achieved}}/g,Math.floor(d.achieved.total * 100))
-							.replace(/{{possible}}/g,Math.floor(d.possible.total * 100))
+							.replace(/{{achieved}}/g,Math.floor(d.total.grade * 100))
+							.replace(/{{possible}}/g,Math.floor(d.total.of * 100))
 							.replace(/{{pct}}/g,pct)
 							;
 						return [
@@ -223,28 +318,170 @@
 						})
 					;
 				
+				head.shift();
+				head.shift();
 				var cells = rows.selectAll('td')
 					.data(function (row) {
-						return row.achieved.values.map(function (achieved,i) {
-							let rtn = {
-								achieved: achieved,
-								possible: row.possible.values[i],
-							};
-							return rtn;
-						});
+						return head
+							.splice(0)
+							.map(function(d){
+								return row.vals[d] || {grade:0,of:0};
+							})
+							;
 					})
 					.enter()
 						.append('td')
 						.text(function (d) {
-						let pct = Math.floor(100.0 * d.achieved.total / d.possible.total);
-						pct = Number.isNaN(pct) ? 0 : pct;
+							let pct = Math.floor(100.0 * d.grade / d.of);
+							pct = Number.isNaN(pct) ? 0 : pct;
 							let rtn = "{{achieved}} of {{possible}} ({{pct}})"
-								.replace(/{{achieved}}/g,Math.floor(d.achieved * 100))
-								.replace(/{{possible}}/g,Math.floor(d.possible * 100))
+								.replace(/{{achieved}}/g,Math.floor(d.grade * 100))
+								.replace(/{{possible}}/g,Math.floor(d.of * 100))
 								.replace(/{{pct}}/g, pct)
 							return rtn;
 						})
 						;
+				console.log("HERE");
+			})
+			.catch(function(err){
+				console.log(err);
+			});
+	})();	
+ </script-->
+ <script>
+	'use strict';
+	(function(){
+		let opts = {
+			group:true,
+			group_level:3,
+			startkey:null,
+			endkey:{},
+		};
+		db.query('metrics/gradesByDate', opts)
+			.then( function(result){
+				result.rows = result.rows.reduce(function(a,d){
+					d = JSON.clone(d);
+					if(a.length === 0){ 
+						return [d];
+					}
+					
+					let last = a[a.length-1];
+					d.value.grade += last.value.grade || 0;
+					d.value.of += last.value.of;
+					d.value.pct = d.value.grade / d.value.of;
+					
+					let enddate = app.parseDate(last.key[2]);
+					let fill = [];
+					for(let date = app.parseDate(d.key[2]); date > enddate; date.setDate(date.getDate()-1)){
+						d.key[2] = app.formatDate(date);
+						fill.push(JSON.clone(d));
+					}
+					
+					while(fill.length > 0){
+						a.push(fill.pop());
+					}
+					return a;
+				},[]);
+				console.log(result);
+				
+				// Set the dimensions of the canvas / graph
+				var margin = {top: 30, right: 20, bottom: 30, left: 50};
+				var width = 600 - margin.left - margin.right;
+				var height = 270 - margin.top - margin.bottom;
+				
+				// Set the ranges
+				var x = d3.scaleTime().range([0, width]);
+				var y = d3.scaleLinear().range([height, 0]);
+				// Scale the range of the data
+				x.domain(d3.extent(result.rows, function(d) { return app.parseDate(d.key[2]); }));
+				y.domain([0, d3.max(result.rows, function(d) { return d.value.of; })]);
+				
+				
+				// Define the axes
+				var xAxis = d3.axisBottom().scale(x).ticks(5);
+				var yAxis = d3.axisLeft().scale(y).ticks(5);
+				
+				// Define the line
+				var lineOf = d3.line()
+					.x(function(d) { 
+						d = app.parseDate(d.key[2]); 
+						return x(d)
+					})
+					.y(function(d) { 
+						return y(d.value.of); 
+					})
+					;
+				var lineGrade = d3.line()
+					.x(function(d) { 
+						d = app.parseDate(d.key[2]); 
+						return x(d); 
+					})
+					.y(function(d) { return y(d.value.grade); })
+					;
+				
+				// Adds the svg canvas
+				var svg = d3.select("#studentgrades")
+					.append("svg")
+						.attr("width", width + margin.left + margin.right)
+						.attr("height", height + margin.top + margin.bottom)
+					.append("g")
+						.attr("transform","translate(" + margin.left + "," + margin.top + ")")
+					;
+				
+				// Add the valueline path.
+				svg.append("path")
+					.attr("fill", "none")
+					.attr("stroke", "black")
+					.attr("d", lineOf(result.rows))
+					;
+				svg.append("path")
+					.attr("fill", "none")
+					.attr("stroke", "steelblue")
+					.attr("d", lineGrade(result.rows))
+					;
+				
+				
+				// Add the X Axis
+				svg.append("g")
+					.attr("class", "x axis")
+					.attr("transform", "translate(0," + height + ")")
+					.call(xAxis)
+					;
+				
+				// Add the Y Axis
+				svg.append("g")
+					.attr("class", "y axis")
+					.call(yAxis)
+					;
+				
+				// Today Line
+				let xToday = x(app.parseDate(constants.today));
+/*				
+				var marker = svg.append('g').attr('id','today').append('path')
+					.attr("stroke", "red")
+					.attr("stroke-width", 3)
+					.attr("fill","red")
+					.attr('opacity',0)
+					.attr('d', ['M0,0 Q ',xToday,',',0,' ',xToday,',0 Q ',xToday,',0 ',width,',0'].join(''))
+					;
+				marker
+					.transition().duration(1000)
+						.attr('opacity', 1)
+						.attr('d', ['M',xToday,',0 Q ',xToday,',',0,' ',xToday,',',height,' Q ',xToday,',',0,' ',xToday,',0'].join(''))
+					;
+*/
+				var marker = svg.append('g').attr('id','today').append('path')
+					.attr("stroke", "red")
+					.attr("stroke-width", 3)
+					.attr("fill","red")
+					.attr('opacity',0)
+						.attr('d', ['M',0,',',height,' Q ',xToday,',',height,' ',xToday,',',height,' Q ',xToday,',',height,' ',width,',',height].join(''))
+					;
+				marker
+					.transition().duration(1000)
+						.attr('opacity', 1)
+						.attr('d', ['M',xToday,',',height,' Q ',xToday,',',height,' ',xToday,',',0,' Q ',xToday,',',height,' ',xToday,',',height].join(''))
+					;
 			})
 			.catch(function(err){
 				console.log(err);

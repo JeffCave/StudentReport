@@ -1,5 +1,29 @@
 	var gradeData = [
 		{
+			"date":"2017-09-05",
+			"student":"W00000001",
+			"grade":{
+				"grade":0,
+				"of":0
+			},
+			"weight":{
+				"grade":null,
+				"of":0,
+			}
+		},
+		{
+			"date":"2017-12-15",
+			"student":"W00000001",
+			"grade":{
+				"grade":0,
+				"of":0
+			},
+			"weight":{
+				"grade":null,
+				"of":0,
+			}
+		},
+		{
 			"date":"2017-10-12",
 			"student":"W00000001",
 			"cat":"Tech Checks",
