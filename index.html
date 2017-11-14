@@ -58,7 +58,7 @@
 			oldDoc = JSON.stringify(oldDoc);
 			newDoc = JSON.stringify(newDoc);
 			
-			rtn = (oldDoc !== newDoc);
+			let rtn = (oldDoc !== newDoc);
 			return rtn;
 		},
 		parseDate: d3.timeParse("%Y-%m-%d"),
