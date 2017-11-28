@@ -20,6 +20,10 @@
 	svg {
 		font: 14px 'Open Sans';
 	}
+	details > div {
+		display:inline-block;
+		margin:1em;
+	}
  </style>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" integrity="sha256-aYYnqVVhAJ4lDammP4Qybmxg3/HVpA7/sNSCntyCyu4=" crossorigin="anonymous"></script>
  <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/5.3.1/pouchdb.min.js"></script>
@@ -33,12 +37,12 @@
 		return json;
 	}
 	
-	var constants = {
+	let constants = {
 		KeyDelim: '.',
 		today: (new Date()).toISOString().substr(0,10),
 	}
 	
-	var app = {
+	let app = {
 		KeyDelim: constants.KeyDelim,
 		docsDiffer: function(oldDoc, newDoc){
 			oldDoc = JSON.clone(oldDoc);
@@ -58,7 +62,7 @@
 			oldDoc = JSON.stringify(oldDoc);
 			newDoc = JSON.stringify(newDoc);
 			
-			rtn = (oldDoc !== newDoc);
+			let rtn = (oldDoc !== newDoc);
 			return rtn;
 		},
 		parseDate: d3.timeParse("%Y-%m-%d"),
@@ -68,20 +72,21 @@
 	
  </script>
 
- <script src="data.json"></script>
+ <script language="javascript" type="text/javascript" src="processdata.js"></script>
+ <script language="javascript" type="text/javascript" src="processAttendance.js"></script>
  
  <script>
-	var db = new PouchDB('grades',{
+	let db = new PouchDB('grades',{
 		auto_compaction: false, 
 		//adapter:'websql',
 	});
 	db.on('error', function (err) { debugger; });
 	//db.destroy();
-	var remoteCouch = false;
+	let remoteCouch = false;
 	
 	db.upsert('_design/metrics',function(oldDoc){
 		console.debug('Generating database views...');
-		var newDoc = {};
+		let newDoc = {};
 		newDoc.views = {
 			'grades': {
 				map: function(doc) {
@@ -90,18 +95,13 @@
 					if (doc.isConfig) return;
 					if (doc.isExcused) return;
 					
-					var key = doc._id.split(app.KeyDelim);
+					let key = doc._id.split(app.KeyDelim);
 					if(key[0] !== 'grade') return;
 					key.shift();
-					
-//					doc.grade.pct = doc.grade.grade/doc.grade.of;
-//					doc.weight.grade = doc.grade.pct * doc.weight.of;
-					
 					
 					emit(key,{
 						grade: doc.weight.grade || 0,
 						of: doc.weight.of,
-//						pct: doc.weighted.grade / doc.weighted.of,
 					});
 				}.toString()
 				,reduce: function(keys, values, rereduce) {
@@ -128,7 +128,7 @@
 					if (doc.isConfig) return;
 					if (doc.isExcused) return;
 					
-					var key = doc._id.split(app.KeyDelim);
+					let key = doc._id.split(app.KeyDelim);
 					if(key[0] !== 'grade') return;
 					key.shift();
 					// move the date from the end to the start
@@ -171,43 +171,73 @@
 		return newDoc;
 				
 	}).then(function(){
-	
-		/**
-		* Import my data
-		*/
-		gradeData.forEach(function(rec){
-			let key = ["grade","logprog",rec.student,rec.cat,rec.item,rec.date].join(app.KeyDelim);
-			db.upsert(key, function(doc){
-				rec.grade.grade = rec.grade.grade || 0;
-				rec.grade.pct = rec.grade.pct || 0;
-				rec.weight.grade = rec.weight.grade || 0;
-				if(rec.grade.of){
-					rec.grade.pct = rec.grade.grade / rec.grade.of;
-					rec.weight.grade = rec.grade.pct * rec.weight.of;
-				}
-				if(app.docsDiffer(doc,rec)){
-					rec._id = key;
-					return rec;
-				}
-				return false;
-			}).then(function(rec){
-				//console.log(JSON.stringify(rec));
-			}).catch(function(err){
-				console.log(JSON.stringify(err));
-			});
+		db.changes({
+			since: 'now',
+			live: true,
+			include_docs: true
+		}).on('change', function(change) {
+			DisplayGrades();
+		}).on('error', function (err) {
+			console.log(err);
 		});
-	}).catch(function(err){
+	})
+	.catch(function(err){
 		console.log(err.message);
 	});
 </script>
 </head>
 <body>
 
-<select>
- <option value="W0000000">Joel, Billy</option>
- <option value="W0000001">Hutch, Starsky</option>
- <option value="W0000002">Young, Angus</option>
-</select>
+<details open="open">
+ <summary>Options</summary>
+ <div>
+  <select>
+   <option value="W0000000">Joel, Billy</option>
+   <option value="W0000001">Hutch, Starsky</option>
+   <option value="W0000002">Young, Angus</option>
+  </select>
+  <br />
+  <button id="dbReset">Reset DB</button>
+  <script>
+	d3.select('#dbReset')
+		.on("click", function() {
+			db.destroy().then(()=>{
+				window.location.reload();
+			});
+		});
+  </script>
+ </div>
+ <div>
+  Grades<br />
+  <input id="fileGrades" type="file" accept=".csv" /><br />
+  Attendance<br />
+  <input id="fileAttend" type="file" accept=".csv" />
+  <script>
+	d3.select('#fileGrades')
+		.on("change", function() {
+			let reader = new FileReader();
+			reader.onloadend = function(evt) {
+				let dataUrl = evt.target.result;
+				processGrades(dataUrl,db);
+			};
+			let file = d3.event.target.files[0];
+			reader.readAsDataURL(file);
+		});
+	d3.select('#fileAttend')
+		.on("change", function() {
+			let reader = new FileReader();
+			reader.onloadend = function(evt) {
+				let dataUrl = evt.target.result;
+				processAttend(dataUrl,db);
+			};
+			let file = d3.event.target.files[0];
+			reader.readAsDataURL(file);
+		});
+  </script>
+ </div>
+ <div>
+ </div>
+</details>
 
 <h1>Joel, Billy</h1>
 <p>W000000</p>
@@ -231,300 +261,314 @@
  <summary>Grades (97%)</summary>
  <script>
 	'use strict';
-	(function(){
-		let opts = {
-			group:true,
-			group_level:3,
-			startkey:null,
-			endkey:{},
-		};
-		db.query('metrics/gradesByDate', opts)
-			.then( function(result){
-				var projections = [];
-				result.rows = result.rows.reduce(function(a,d){
-					d = JSON.clone(d);
-					if(a.length === 0){ 
-						return [d];
-					}
-					
-					let last = a[a.length-1];
-					d.value.of += last.value.of;
-					// either calulcate the grade they have acheived
-					if(constants.today > d.key[2]){
-						d.value.grade += last.value.grade || 0;
-						d.value.pct = d.value.grade / d.value.of;
-					}
-					// or calcluate their projected grade
-					else{
-						d.value.pct = last.value.pct;
-						d.value.grade = last.value.grade;
-						if(!projections.length){
+	let DisplayGrades_pending = false;
+	function DisplayGrades(override){
+		override = override || false;
+		if(override){
+			DisplayGrades_pending = false;
+		}
+		if(DisplayGrades_pending){
+			return;
+		}
+		DisplayGrades_pending = true;
+		
+		setTimeout(function(){
+			this.opts = {
+				group:true,
+				group_level:3,
+				startkey:null,
+				endkey:{},
+			};
+			
+			db.query('metrics/gradesByDate', this.opts)
+				.then( function(result){
+					DisplayGrades_pending = false;
+					let projections = [];
+					result.rows = result.rows.reduce(function(a,d){
+						d = JSON.clone(d);
+						if(a.length === 0){ 
+							return [d];
+						}
+						
+						let last = a[a.length-1];
+						d.value.of += last.value.of;
+						// either calulcate the grade they have acheived
+						if(constants.today > d.key[2]){
+							d.value.grade += last.value.grade || 0;
+							d.value.pct = d.value.grade / d.value.of;
+						}
+						// or calcluate their projected grade
+						else{
+							d.value.pct = last.value.pct;
+							d.value.grade = last.value.grade;
+							if(!projections.length){
+								projections.unshift({
+									date: constants.today,
+									possible: last.value.grade,
+									avg: last.value.grade,
+									pct: d.value.pct,
+								});
+							}
 							projections.unshift({
-								date: constants.today,
-								possible: last.value.grade,
-								avg: last.value.grade,
-								pct: d.value.pct,
+								date: d.key[2],
+								possible: projections[0].possible + (d.value.of - last.value.of),
+								avg: projections[0].pct * d.value.of,
+								pct: projections[0].pct,
 							});
 						}
-						projections.unshift({
-							date: d.key[2],
-							possible: projections[0].possible + (d.value.of - last.value.of),
-							avg: projections[0].pct * d.value.of,
-							pct: projections[0].pct,
-						});
-					}
+						
+						let enddate = app.parseDate(last.key[2]);
+						let fill = [];
+						for(let date = app.parseDate(d.key[2]); date > enddate; date.setDate(date.getDate()-1)){
+							d.key[2] = app.formatDate(date);
+							fill.push(JSON.clone(d));
+						}
+						
+						while(fill.length > 0){
+							a.push(fill.pop());
+						}
+						return a;
+					},[]);
+					projections.reverse();
+					console.log(result);
+					console.log(projections);
 					
-					let enddate = app.parseDate(last.key[2]);
-					let fill = [];
-					for(let date = app.parseDate(d.key[2]); date > enddate; date.setDate(date.getDate()-1)){
-						d.key[2] = app.formatDate(date);
-						fill.push(JSON.clone(d));
-					}
+					// Set the dimensions of the canvas / graph
+					let margin = {top: 30, right: 50, bottom: 30, left: 20};
+					let width = 600 - margin.left - margin.right;
+					let height = 270 - margin.top - margin.bottom;
 					
-					while(fill.length > 0){
-						a.push(fill.pop());
-					}
-					return a;
-				},[]);
-				projections.reverse();
-				console.log(result);
-				console.log(projections);
-				
-				// Set the dimensions of the canvas / graph
-				var margin = {top: 30, right: 50, bottom: 30, left: 20};
-				var width = 600 - margin.left - margin.right;
-				var height = 270 - margin.top - margin.bottom;
-				
-				// Set the ranges
-				var x = d3.scaleTime().range([0, width]);
-				var y = d3.scaleLinear().range([height, 0]);
-				// Scale the range of the data
-				x.domain(d3.extent(result.rows, function(d) { return app.parseDate(d.key[2]); }));
-				y.domain([0, 1]);
-				
-				
-				// Define the axes
-				var xAxis = d3.axisBottom().scale(x).ticks(5);
-				var yAxis = d3.axisRight().scale(y).ticks(5);
-				
-				// Define the line
-				var lineOf = d3.line()
-					.curve(d3.curveStepBefore)
-					.x(function(d) { 
-						d = app.parseDate(d.key[2]); 
-						return x(d)
-					})
-					.y(function(d) { 
-						return y(d.value.of); 
-					})
-					;
-				var lineGrade = d3.line()
-					.curve(d3.curveStepBefore)
-					.x(function(d) { 
-						d = app.parseDate(d.key[2]); 
-						return x(d); 
-					})
-					.y(function(d) { return y(d.value.grade); })
-					;
-				var linePossible = d3.line()
-					.curve(d3.curveCatmullRom)
-					.x(function(d) {
-						d = app.parseDate(d.date); 
-						d = x(d)
-						return d; 
-					})
-					.y(function(d) {
-						d = d.possible;
-						d = y(d);
+					// Set the ranges
+					let x = d3.scaleTime().range([0, width]);
+					let y = d3.scaleLinear().range([height, 0]);
+					// Scale the range of the data
+					x.domain(d3.extent(result.rows, function(d) { return app.parseDate(d.key[2]); }));
+					y.domain([0, 1]);
+					
+					
+					// Define the axes
+					let xAxis = d3.axisBottom().scale(x).ticks(5);
+					let yAxis = d3.axisRight().scale(y).ticks(5);
+					
+					// Define the line
+					let lineOf = d3.line()
+						.curve(d3.curveStepBefore)
+						.x(function(d) { 
+							d = app.parseDate(d.key[2]); 
+							return x(d)
+						})
+						.y(function(d) { 
+							return y(d.value.of); 
+						})
+						;
+					let lineGrade = d3.line()
+						.curve(d3.curveStepBefore)
+						.x(function(d) { 
+							d = app.parseDate(d.key[2]); 
+							return x(d); 
+						})
+						.y(function(d) { return y(d.value.grade); })
+						;
+					let linePossible = d3.line()
+						.curve(d3.curveCatmullRom)
+						.x(function(d) {
+							d = app.parseDate(d.date); 
+							d = x(d)
+							return d; 
+						})
+						.y(function(d) {
+							d = d.possible;
+							d = y(d);
+							return d;
+						})
+						;
+					let lineExpected = d3.line()
+						.curve(d3.curveCatmullRom)
+						.x(function(d) {
+							d = app.parseDate(d.date); 
+							d = x(d)
+							return d; 
+						})
+						.y(function(d) {
+							d = d.avg;
+							d = y(d);
+							return d;
+						})
+						;
+					
+					// Adds the svg canvas
+					let svg = d3.select("#studentgrades")
+						.append("svg")
+							.attr("width", width + margin.left + margin.right)
+							.attr("height", height + margin.top + margin.bottom)
+						.append("g")
+							.attr("transform","translate(" + margin.left + "," + margin.top + ")")
+						;
+					
+					// Add the valueline path.
+					svg.append("path")
+						.attr("fill", "none")
+						.attr("stroke", "black")
+						.attr("d", lineOf(result.rows))
+						;
+					svg.append("path")
+						.attr("fill", "none")
+						.attr("stroke", "green")
+						.attr("d", lineGrade(result.rows))
+						;
+					
+					// Add the X Axis
+					svg.append("g")
+						.attr("class", "x axis")
+						.attr("transform", "translate(0," + height + ")")
+						.call(xAxis)
+						;
+					
+					// Add the Y Axis
+					svg.append("g")
+						.attr("class", "y axis")
+						.attr("transform", "translate("+width+",0)")
+						.call(yAxis)
+						;
+					
+					let gradeVals = projections.map((d)=>{
+						let date = d.date;
+						d = JSON.clone(projections[0]);
+						d.date = date;
 						return d;
-					})
-					;
-				var lineExpected = d3.line()
-					.curve(d3.curveCatmullRom)
-					.x(function(d) {
-						d = app.parseDate(d.date); 
-						d = x(d)
-						return d; 
-					})
-					.y(function(d) {
-						d = d.avg;
-						d = y(d);
+					});
+					let randVals = projections.map((d,i)=>{
+						d = JSON.clone(d);
+						d.possible = (!i)?d.possible:Math.random();
 						return d;
-					})
-					;
-				
-				// Adds the svg canvas
-				var svg = d3.select("#studentgrades")
-					.append("svg")
-						.attr("width", width + margin.left + margin.right)
-						.attr("height", height + margin.top + margin.bottom)
-					.append("g")
-						.attr("transform","translate(" + margin.left + "," + margin.top + ")")
-					;
-				
-				// Add the valueline path.
-				svg.append("path")
-					.attr("fill", "none")
-					.attr("stroke", "black")
-					.attr("d", lineOf(result.rows))
-					;
-				svg.append("path")
-					.attr("fill", "none")
-					.attr("stroke", "green")
-					.attr("d", lineGrade(result.rows))
-					;
-				
-				
-				// Add the X Axis
-				svg.append("g")
-					.attr("class", "x axis")
-					.attr("transform", "translate(0," + height + ")")
-					.call(xAxis)
-					;
-				
-				// Add the Y Axis
-				svg.append("g")
-					.attr("class", "y axis")
-					.attr("transform", "translate("+width+",0)")
-					.call(yAxis)
-					;
-				
-				var gradeVals = projections.map((d)=>{
-					let date = d.date;
-					d = JSON.clone(projections[0]);
-					d.date = date;
-					return d;
-				});
-				var randVals = projections.map((d,i)=>{
-					d = JSON.clone(d);
-					d.possible = (!i)?d.possible:Math.random();
-					return d;
-				});
-				var accordianVals = projections.map((d,i)=>{
-					d = JSON.clone(d);
-					d.date = projections[0].date;
-					d.possible = i%2;
-					return d;
-				});
-				svg.append("path")
-					.attr("fill", "none")
-					.attr("stroke", "steelblue")
-					.attr("stroke-width", 3)
-					.attr('opacity',0)
-					.attr("d", linePossible(accordianVals))
-					.transition()
-						.delay(1200)
-						.duration(1)
-						.attr('opacity',1)
-					.transition()
-						.duration(1000)
-						.ease(d3.easeElasticOut)
+					});
+					let accordianVals = projections.map((d,i)=>{
+						d = JSON.clone(d);
+						d.date = projections[0].date;
+						d.possible = i%2;
+						return d;
+					});
+					svg.append("path")
+						.attr("fill", "none")
+						.attr("stroke", "steelblue")
+						.attr("stroke-width", 3)
+						.attr('opacity',0)
+						.attr("d", linePossible(accordianVals))
+						.transition()
+							.delay(1200)
+							.duration(1)
+							.attr('opacity',1)
+						.transition()
+							.duration(1000)
+							.ease(d3.easeElasticOut)
+							.attr("d", linePossible(projections))
+						;
+					svg.append("path")
+						.attr("fill", "none")
+						.attr("stroke", "steelblue")
+						.attr("stroke-width", 3)
+						.attr('opacity',0)
 						.attr("d", linePossible(projections))
-					;
-				svg.append("path")
-					.attr("fill", "none")
-					.attr("stroke", "steelblue")
-					.attr("stroke-width", 3)
-					.attr('opacity',0)
-					.attr("d", linePossible(projections))
-					.transition()
-						.delay(2300)
-						.duration(1)
-						.attr('opacity',1)
-					.transition()
-						.duration(1000)
-						.ease(d3.easeElasticOut)
-						.attr("d", lineExpected(projections))
-					;
-				svg.append("path")
-					.attr("fill", "none")
-					.attr("stroke", "steelblue")
-					.attr("stroke-width", 3)
-					.attr('opacity',0)
-					.attr("d", linePossible(projections))
-					.transition()
-						.delay(2300)
-						.duration(1)
-						.attr('opacity',1)
-					.transition()
-						.duration(1000)
-						.ease(d3.easeElasticOut)
-						.attr("d", linePossible(gradeVals))
-					;
-				// Today Line
-				let xToday = x(app.parseDate(constants.today));
-				var todayMarker = svg.append('g').attr('id','today');
-				todayMarker.append('text')
-					.attr('font-size',10)
-					.attr('opacity',0)
-					.text(constants.today)
-					;
+						.transition()
+							.delay(2300)
+							.duration(1)
+							.attr('opacity',1)
+						.transition()
+							.duration(1000)
+							.ease(d3.easeElasticOut)
+							.attr("d", lineExpected(projections))
+						;
+					svg.append("path")
+						.attr("fill", "none")
+						.attr("stroke", "steelblue")
+						.attr("stroke-width", 3)
+						.attr('opacity',0)
+						.attr("d", linePossible(projections))
+						.transition()
+							.delay(2300)
+							.duration(1)
+							.attr('opacity',1)
+						.transition()
+							.duration(1000)
+							.ease(d3.easeElasticOut)
+							.attr("d", linePossible(gradeVals))
+						;
+					// Today Line
+					let xToday = x(app.parseDate(constants.today));
+					let todayMarker = svg.append('g').attr('id','today');
+					todayMarker.append('text')
+						.attr('font-size',10)
+						.attr('opacity',0)
+						.text(constants.today)
+						;
+						
+					let textSize = Array.from(document.querySelectorAll('g#today text'))[0].getBoundingClientRect();
+					textSize.x = xToday - (textSize.width/2)
+					todayMarker.select("g#today > text")
+						.attr('x',textSize.x)
+						.attr('y',textSize.height+2.5)
+						;
 					
-				var textSize = Array.from(document.querySelectorAll('g#today text'))[0].getBoundingClientRect();
-				textSize.x = xToday - (textSize.width/2)
-				todayMarker.select("g#today > text")
-					.attr('x',textSize.x)
-					.attr('y',textSize.height+2.5)
-					;
-				
-				todayMarker.append('rect')
-					.attr('x',textSize.x-10)
-					.attr('y', 0)
-					.attr('width',textSize.width +20)
-					.attr('height',textSize.height +10)
-					.attr('stroke','red')
-					.attr('fill','rgba(255,0,0,0.25)')
-					.attr('stroke-width',2)
-					.attr('opacity',0)
-					;
-				var rectSize = JSON.clone(Array.from(document.querySelectorAll('g#today rect'))[0].getBoundingClientRect());
-				rectSize.x = xToday - (textSize.width/2) - 10;
-				todayMarker.append('path')
-					.attr("stroke", "red")
-					.attr("stroke-width", 3)
-					.attr("fill","red")
-					.attr('opacity',0)
-					.attr('d', ['M',0,',',height,' Q ',xToday,',',height,' ',xToday,',',height,' Q ',xToday,',',height,' ',width,',',height].join(''))
-					.transition()
-						.delay(100)
-						.duration(1000)
-						.attr('opacity', 1)
-						.attr('d', [
-							'M',xToday,',',height,
-							' Q ',xToday,',',height,' ',xToday,',',rectSize.height,
-							' Q ',xToday,',',height,' ',xToday,',',height
-							].join(''))
-					;
-				todayMarker.select("g#today > rect")
-					.attr('x',xToday)
-					.attr('y', rectSize.height)
-					.attr('width',0)
-					.attr('height',0)
-					.attr('opacity',1)
-					.attr('rx',5)
-					.attr('ry',5)
-					.transition()
-						.delay(400)
-						.duration(500)
-						.attr('x',rectSize.x)
-						.attr('width',rectSize.width)
-					.transition()
-						.duration(500)
-						.attr('y',0)
-						.attr('height',rectSize.height)
-					;
-				todayMarker.select("g#today > text")
-					.transition()
-						.delay(1000)
-						.duration(1000)
+					todayMarker.append('rect')
+						.attr('x',textSize.x-10)
+						.attr('y', 0)
+						.attr('width',textSize.width +20)
+						.attr('height',textSize.height +10)
+						.attr('stroke','red')
+						.attr('fill','rgba(255,0,0,0.25)')
+						.attr('stroke-width',2)
+						.attr('opacity',0)
+						;
+					let rectSize = JSON.clone(Array.from(document.querySelectorAll('g#today rect'))[0].getBoundingClientRect());
+					rectSize.x = xToday - (textSize.width/2) - 10;
+					todayMarker.append('path')
+						.attr("stroke", "red")
+						.attr("stroke-width", 3)
+						.attr("fill","red")
+						.attr('opacity',0)
+						.attr('d', ['M',0,',',height,' Q ',xToday,',',height,' ',xToday,',',height,' Q ',xToday,',',height,' ',width,',',height].join(''))
+						.transition()
+							.delay(100)
+							.duration(1000)
+							.attr('opacity', 1)
+							.attr('d', [
+								'M',xToday,',',height,
+								' Q ',xToday,',',height,' ',xToday,',',rectSize.height,
+								' Q ',xToday,',',height,' ',xToday,',',height
+								].join(''))
+						;
+					todayMarker.select("g#today > rect")
+						.attr('x',xToday)
+						.attr('y', rectSize.height)
+						.attr('width',0)
+						.attr('height',0)
 						.attr('opacity',1)
-					;
+						.attr('rx',5)
+						.attr('ry',5)
+						.transition()
+							.delay(400)
+							.duration(500)
+							.attr('x',rectSize.x)
+							.attr('width',rectSize.width)
+						.transition()
+							.duration(500)
+							.attr('y',0)
+							.attr('height',rectSize.height)
+						;
+					todayMarker.select("g#today > text")
+						.transition()
+							.delay(1000)
+							.duration(1000)
+							.attr('opacity',1)
+						;
 
-			})
-			.catch(function(err){
-				console.log(err);
-			});
-	})();	
+				})
+				.catch(function(err){
+					console.log(err);
+				});
+		},1000);
+	}
+	DisplayGrades();
  </script>
  <style>
 	details#studentgrades table{
