@@ -29,6 +29,7 @@
 	
 	let app = {
 		KeyDelim: constants.KeyDelim,
+		effective:constants.today,
 		docsDiffer: function(origDoc, inputDoc){
 			let oldDoc = JSON.clone(origDoc);
 			let newDoc = JSON.clone(inputDoc);
@@ -61,7 +62,7 @@
  <script language="javascript" type="text/javascript" src="processAttendance.js"></script>
  
  <script>
-    'use strict'
+    'use strict';
 	let db = new PouchDB('grades',{
 		auto_compaction: false, 
 		//adapter:'websql',
@@ -177,6 +178,8 @@
 <details open="open">
  <summary>Options</summary>
  <div>
+  <input type="date" id="today" />
+  <br />
   <select>
    <option value="W0000000">Joel, Billy</option>
    <option value="W0000001">Hutch, Starsky</option>
@@ -185,11 +188,16 @@
   <br />
   <button id="dbReset">Reset DB</button>
   <script>
+	d3.select('#today')
+	    .property("value", constants.today)
+	    .on('change',function(){
+	        app.effective = d3.event.target.value;
+	        DisplayGrades();
+	    })
+	    ;
 	d3.select('#dbReset')
 		.on("click", function() {
-			db.destroy().then(()=>{
-				window.location.reload();
-			});
+			db.destroy().then(window.location.reload);
 		});
   </script>
  </div>
@@ -259,14 +267,14 @@
 		DisplayGrades_pending = true;
 		
 		setTimeout(function(){
-			this.opts = {
+			let opts = {
 				group:true,
 				group_level:3,
-				startkey:null,
-				endkey:{},
+				startkey:['logprog','0000002'],
+				endkey:['logprog','0000002',{}],
 			};
 			
-			db.query('metrics/gradesByDate', this.opts)
+			db.query('metrics/gradesByDate', opts)
 				.then( function(result){
 					DisplayGrades_pending = false;
 					let projections = [];
@@ -480,12 +488,21 @@
 							.attr("d", linePossible(gradeVals))
 						;
 					// Today Line
-					let xToday = x(app.parseDate(constants.today));
+					let xToday = x(app.parseDate(app.effective));
 					let todayMarker = svg.append('g').attr('id','today');
+					/*
+					let todayMarker = svg
+					   .select('g#today')
+					   .data(xToday)
+					   .enter()
+    					   .append('g')
+    					   .attr('id','today')
+					   ;
+                    */
 					todayMarker.append('text')
 						.attr('font-size',10)
 						.attr('opacity',0)
-						.text(constants.today)
+						.text(app.effective)
 						;
 						
 					let textSize = Array.from(document.querySelectorAll('g#today text'))[0].getBoundingClientRect();

@@ -57,6 +57,7 @@ function processGrades(dataurl,db){
 					(assig.categoryweight/100.0)
 				).toFixed(3)
 				;
+			rtn.grade.weight.of = +rtn.grade.weight.of;
 		}
 		
 		elems = elems[0].split(' ');
