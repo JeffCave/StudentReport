@@ -60,6 +60,7 @@
 
  <script language="javascript" type="text/javascript" src="processdata.js"></script>
  <script language="javascript" type="text/javascript" src="processAttendance.js"></script>
+ <script src="./pouchdb/metrics.js"></script>
  
  <script>
     'use strict';
@@ -67,110 +68,38 @@
 		auto_compaction: false, 
 		//adapter:'websql',
 	});
-	db.on('error', function (err) { debugger; });
+	db.on('error', function (err) {
+	    console.debug(err)
+	});
 	//db.destroy();
 	let remoteCouch = false;
 	
-	db.upsert('_design/metrics',function(oldDoc){
-		console.debug('Generating database views...');
-		let newDoc = {};
-		newDoc.views = {
-			'grades': {
-				map: function(doc) {
-					// determine if the object belongs in this listing
-					if (!doc) return;
-					if (doc.isConfig) return;
-					if (doc.isExcused) return;
-					
-					let key = doc._id.split(app.KeyDelim);
-					if(key[0] !== 'grade') return;
-					key.shift();
-					
-					emit(key,{
-						grade: doc.weight.grade || 0,
-						of: doc.weight.of,
-					});
-				}.toString()
-				,reduce: function(keys, values, rereduce) {
-					grade = 0;
-					of = 0;
-					count = 0;
-					values.forEach(function(rec){
-						grade += rec.grade;
-						of += rec.of;
-						count += rec.count || 1;
-					});
-					return {
-						grade: grade,
-						of:    of,
-						pct:   grade/of,
-						count: count
-					};
-				}.toString()
-			},
-			'gradesByDate': {
-				map: function(doc) {
-					// determine if the object belongs in this listing
-					if (!doc) return;
-					if (doc.isConfig) return;
-					if (doc.isExcused) return;
-					
-					let key = doc._id.split(app.KeyDelim);
-					if(key[0] !== 'grade') return;
-					key.shift();
-					// move the date from the end to the start
-					let classId = key.shift();
-					let studentId = key.shift();
-					let gradeDate = key.pop();
-					key.unshift(gradeDate);
-					key.unshift(studentId);
-					key.unshift(classId);
-					
-					emit(key,{
-						grade: doc.weight.grade || 0,
-						of: doc.weight.of,
-					});
-				}.toString()
-				,reduce: function(keys, values, rereduce) {
-					grade = 0;
-					of = 0;
-					count = 0;
-					values.forEach(function(rec){
-						grade += rec.grade;
-						of += rec.of;
-						count += rec.count || 1;
-					});
-					return {
-						grade: grade,
-						of:    of,
-						pct:   grade/of,
-						count: count
-					};
-				}.toString()
-			}
-		};
-		
-		if(!app.docsDiffer(oldDoc,newDoc)) {
-			console.log('metrics calculations: current');
-			return false;
-		}
-		console.log('metrics calculations: rebuilding (change detected)');
-		return newDoc;
-				
-	}).then(function(){
-		db.changes({
-			since: 'now',
-			live: true,
-			include_docs: true
-		}).on('change', function(change) {
-			DisplayGrades();
-		}).on('error', function (err) {
-			console.log(err);
-		});
-	})
-	.catch(function(err){
-		console.log(err.message);
+db.upsert('_design/metrics',function(oldDoc){
+	console.debug('Generating database views...');
+	let newDoc = {};
+	newDoc.views = StudentReport.metrics.views;
+	if(!app.docsDiffer(oldDoc,newDoc)) {
+		console.log('metrics calculations: current');
+		return false;
+	}
+	console.log('metrics calculations: rebuilding (change detected)');
+	return newDoc;
+			
+}).then(function(){
+	db.changes({
+		since: 'now',
+		live: true,
+		include_docs: true
+	}).on('change', function(change) {
+		DisplayGrades();
+	}).on('error', function (err) {
+		console.log(err);
 	});
+})
+.catch(function(err){
+	console.log(err.message);
+});
+
 </script>
 </head>
 <body>
@@ -197,7 +126,11 @@
 	    ;
 	d3.select('#dbReset')
 		.on("click", function() {
-			db.destroy().then(window.location.reload);
+			db.destroy()
+                .then(window.location.reload)
+                .catch(function(err){
+                    
+                });
 		});
   </script>
  </div>
@@ -259,13 +192,12 @@
  </script>
 </details>
 
-<details>
+<details id="studentattendace" open>
  <summary>Attendance</summary>
- <table>
-  <tr>
-   <td></td>
-  </tr>
- </table>
+ <script language="javascript" type="text/javascript" src="DisplayAttendance.js"></script>
+ <script>
+	DisplayAttendance();
+ </script>
 </details>
 
 

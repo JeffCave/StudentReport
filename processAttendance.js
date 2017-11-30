@@ -37,6 +37,7 @@ function processAttend(dataurl,db){
 					date = date.toISOString().substr(0,10);
 					//console.debug("=3="+date);
 					let attend ={
+					    _id:['attend',"logprog",student.username,date].join(app.keyDelim),
 						student:student,
 						date:date,
 						attendance:['A','P'].indexOf(d),

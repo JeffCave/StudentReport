@@ -1,30 +1,37 @@
+/**
+ * https://strongriley.github.io/d3/ex/calendar.html
+ * https://bl.ocks.org/micahstubbs/89c6bd879d64aa511372064c6cf85711
+ */
 'use strict';
-let DisplayGrades_pending = false;
-function DisplayGrades(override){
+
+let DisplayAttendance_pending = false;
+function DisplayAttendance(override){
 	override = override || false;
 	if(override){
-		DisplayGrades_pending = false;
+		DisplayAttendance_pending = false;
 	}
-	if(DisplayGrades_pending){
+	if(DisplayAttendance_pending){
 		return;
 	}
-	DisplayGrades_pending = true;
+	DisplayAttendance_pending = true;
 	
 	setTimeout(function(){
 		let opts = {
-			group:true,
-			group_level:3,
-			startkey:['logprog','0000002'],
-			endkey:['logprog','0000002',{}],
+		    reduce:false,
+		    include_docs:true
+			//group:true,
+			//group_level:3,
+			//startkey:['logprog','0000002'],
+			//endkey:['logprog','0000002',{}],
 		};
 		
-		db.query('metrics/gradesByDate', opts)
+		db.query('metrics/attendance', opts)
 			.then( function(result){
-				DisplayGrades_pending = false;
+				DisplayAttendance_pending = false;
 				let projections = [];
 				result.rows = result.rows.reduce(function(a,d){
 					d = JSON.clone(d);
-					if(a.length === 0){ 
+					if(a.length === 0){
 						return [d];
 					}
 					
@@ -68,8 +75,8 @@ function DisplayGrades(override){
 					return a;
 				},[]);
 				projections.reverse();
-				//console.log(result);
-				//console.log(projections);
+				console.log(result);
+				console.log(projections);
 				
 				// Set the dimensions of the canvas / graph
 				let margin = {top: 30, right: 50, bottom: 30, left: 20};
@@ -135,7 +142,7 @@ function DisplayGrades(override){
 					;
 				
 				// Adds the svg canvas
-				let svg = d3.select("#studentgrades")
+				let svg = d3.select("#studentattendace")
 					.append("svg")
 						.attr("width", width + margin.left + margin.right)
 						.attr("height", height + margin.top + margin.bottom)
