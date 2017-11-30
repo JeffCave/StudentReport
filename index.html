@@ -287,7 +287,7 @@
 						let last = a[a.length-1];
 						d.value.of += last.value.of;
 						// either calulcate the grade they have acheived
-						if(constants.today > d.key[2]){
+						if(app.effective > d.key[2]){
 							d.value.grade += last.value.grade || 0;
 							d.value.pct = d.value.grade / d.value.of;
 						}
@@ -489,42 +489,63 @@
 						;
 					// Today Line
 					let xToday = x(app.parseDate(app.effective));
-					let todayMarker = svg.append('g').attr('id','today');
-					/*
+					//let todayMarker = svg.append('g').attr('id','today');
+					
 					let todayMarker = svg
-					   .select('g#today')
-					   .data(xToday)
-					   .enter()
-    					   .append('g')
-    					   .attr('id','today')
+					   .selectAll('g#today')
+					   .data([app.effective])
 					   ;
-                    */
-					todayMarker.append('text')
-						.attr('font-size',10)
+					let entry = todayMarker.enter()
+					    .append('g')
+					    .attr('id','today')
+					    ;
+                    entry.append('text')
+				        .attr('font-size',10)
 						.attr('opacity',0)
 						.text(app.effective)
 						;
 						
-					let textSize = Array.from(document.querySelectorAll('g#today text'))[0].getBoundingClientRect();
-					textSize.x = xToday - (textSize.width/2);;
-					todayMarker.select("g#today > text")
-						.attr('x',textSize.x)
-						.attr('y',textSize.height+2.5)
-						;
+					let textSize = Array.from(document.querySelectorAll('g#today > text'))[0].getBoundingClientRect();
+					let rectSize = {
+					    x : xToday - (textSize.width/2) - 10,
+					    y : 0,
+					    height:textSize.height + 10,
+					    width:textSize.width + 20
+					};
 					
-					todayMarker.append('rect')
-						.attr('x',textSize.x-10)
-						.attr('y', 0)
-						.attr('width',textSize.width +20)
-						.attr('height',textSize.height +10)
+                    entry.append('text')
+				        .attr('font-size',10)
+						.attr('opacity',0)
+						.attr('x',rectSize.x+10)
+						.attr('y',14)
+						.text(app.effective)
+						.transition()
+							.delay(1000)
+							.duration(1000)
+							.attr('opacity',1)
+						;
+                    entry.append('rect')
 						.attr('stroke','red')
 						.attr('fill','rgba(255,0,0,0.25)')
 						.attr('stroke-width',2)
-						.attr('opacity',0)
+						.attr('opacity',1)
+						.attr('x',xToday)
+						.attr('y', rectSize.height)
+						.attr('width',0)
+						.attr('height',0)
+						.attr('rx',5)
+						.attr('ry',5)
+						.transition()
+							.delay(400)
+							.duration(500)
+							.attr('x',rectSize.x)
+							.attr('width',rectSize.width)
+						.transition()
+							.duration(500)
+							.attr('y',0)
+							.attr('height',rectSize.height)
 						;
-					let rectSize = JSON.clone(Array.from(document.querySelectorAll('g#today rect'))[0].getBoundingClientRect());
-					rectSize.x = xToday - (textSize.width/2) - 10;
-					todayMarker.append('path')
+					entry.append('path')
 						.attr("stroke", "red")
 						.attr("stroke-width", 3)
 						.attr("fill","red")
@@ -539,30 +560,6 @@
 								' Q ',xToday,',',height,' ',xToday,',',rectSize.height,
 								' Q ',xToday,',',height,' ',xToday,',',height
 								].join(''))
-						;
-					todayMarker.select("g#today > rect")
-						.attr('x',xToday)
-						.attr('y', rectSize.height)
-						.attr('width',0)
-						.attr('height',0)
-						.attr('opacity',1)
-						.attr('rx',5)
-						.attr('ry',5)
-						.transition()
-							.delay(400)
-							.duration(500)
-							.attr('x',rectSize.x)
-							.attr('width',rectSize.width)
-						.transition()
-							.duration(500)
-							.attr('y',0)
-							.attr('height',rectSize.height)
-						;
-					todayMarker.select("g#today > text")
-						.transition()
-							.delay(1000)
-							.duration(1000)
-							.attr('opacity',1)
 						;
 
 				})
