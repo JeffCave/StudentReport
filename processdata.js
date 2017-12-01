@@ -1,8 +1,7 @@
+/*eslint-disable no-implicit-coercion, no-param-reassign, no-extra-parens, no-unused-params*/
 'use strict';
 function processGrades(dataurl,db){
 	
-	
-	let assessments = {};
 	let header = [];
 	let grades = [];
 	
@@ -34,14 +33,14 @@ function processGrades(dataurl,db){
 					a[d[0]] = d[1];
 				}
 				return a;
-			},{'type':'assig'})
+			},{'type':'assig'});
 		return assign;
 	}
 	
 	function parseField(fld){
 		fld = fld
 			.replace(/>/ig,'')
-			.replace(/  /g,'')
+			.replace(/ {2}/g,'')
 			;
 		
 		let rtn = {};
@@ -61,7 +60,7 @@ function processGrades(dataurl,db){
 		}
 		
 		elems = elems[0].split(' ');
-		while(elems.pop() === "");
+		while(elems.pop() === ""){}
 		rtn.scheme = elems.pop();
 		rtn.cat = elems.pop();
 		rtn.item = elems.join(' ');

@@ -17,12 +17,12 @@ function DisplayAttendance(override){
 	
 	setTimeout(function(){
 		let opts = {
-		    reduce:false,
-		    include_docs:true
-			//group:true,
-			//group_level:3,
-			//startkey:['logprog','W0000002'],
-			//endkey:['logprog','W0000002',{}],
+		    //reduce:false,
+		    //include_docs:true,
+			group:true,
+			group_level:5,
+			startkey:['logprog','W0000002'],
+			endkey:['logprog','W0000002',{}],
 		};
 		
 		db.query('metrics/attendance', opts)

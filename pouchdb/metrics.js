@@ -93,32 +93,20 @@ StudentReport.metrics.views = {
 			if(key[0] !== 'attend') return;
 			key.shift();
 			
-			emit(key, {
-                date: doc.date,
-                attendance: doc.attendance,
-			});
+			emit(key,doc.attendance);
+			//emit(key, {
+            //    date: doc.date,
+            //    attendance: doc.attendance,
+			//});
         }.toString()
+        //,reduce:"_stats",
+        
         ,reduce: function(keys,values,rereduce){
             let vals = values;
-            if(!rereduce){
-                vals = vals.map(function(d){
-                    d.date = [d.date,d.date];
-                    return d;
-                });
-            }
-            
-            vals = vals.reduce(function(a,d){
-                    if(a.date[0] > d.date[0]){
-                        a.date[0] = d.date[0];
-                    }
-                    if(a.date[1] < d.date[1]){
-                        a.date[1] = d.date[1];
-                    }
-                    a.attendance += d.attendance;
-                    return a;
-                },{date:[vals[0],vals[0]],attendance:0});
+            vals = vals.reduce(function(a,d){return a+d;},0);
             return vals;
         }.toString()
+        
     }
 };
 
