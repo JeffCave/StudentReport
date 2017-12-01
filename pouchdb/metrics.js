@@ -5,7 +5,7 @@ if(!StudentReport){
     var StudentReport = {};
 }
 
-'use strict;'
+'use strict';
 StudentReport.metrics = {};
 StudentReport.metrics.views = {
 	'grades': {
@@ -25,9 +25,9 @@ StudentReport.metrics.views = {
 			});
 		}.toString()
 		,reduce: function(keys, values, rereduce) {
-			grade = 0;
-			of = 0;
-			count = 0;
+			let grade = 0;
+			let of = 0;
+			let count = 0;
 			values.forEach(function(rec){
 				grade += rec.grade;
 				of += rec.of;
@@ -65,9 +65,9 @@ StudentReport.metrics.views = {
 			});
 		}.toString()
 		,reduce: function(keys, values, rereduce) {
-			grade = 0;
-			of = 0;
-			count = 0;
+			let grade = 0;
+			let of = 0;
+			let count = 0;
 			values.forEach(function(rec){
 				grade += rec.grade;
 				of += rec.of;
@@ -90,12 +90,35 @@ StudentReport.metrics.views = {
 			if (doc.isExcused) return;
 			
 			let key = doc._id.split(app.KeyDelim);
-//			if(key[0] !== 'attend') return;
-//			key.shift();
-//			
-			emit(key,doc);
-		}.toString()
-		,reduce: "_stats"
-	}
+			if(key[0] !== 'attend') return;
+			key.shift();
+			
+			emit(key, {
+                date: doc.date,
+                attendance: doc.attendance,
+			});
+        }.toString()
+        ,reduce: function(keys,values,rereduce){
+            let vals = values;
+            if(!rereduce){
+                vals = vals.map(function(d){
+                    d.date = [d.date,d.date];
+                    return d;
+                });
+            }
+            
+            vals = vals.reduce(function(a,d){
+                    if(a.date[0] > d.date[0]){
+                        a.date[0] = d.date[0];
+                    }
+                    if(a.date[1] < d.date[1]){
+                        a.date[1] = d.date[1];
+                    }
+                    a.attendance += d.attendance;
+                    return a;
+                },{date:[vals[0],vals[0]],attendance:0});
+            return vals;
+        }.toString()
+    }
 };
-	
+

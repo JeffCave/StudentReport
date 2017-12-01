@@ -2,9 +2,9 @@
 function processGrades(dataurl,db){
 	
 	
-	var assessments = {};
-	var header = [];
-	var grades = [];
+	let assessments = {};
+	let header = [];
+	let grades = [];
 	
 	const idFlds = [
 		'OrgDefinedId',
@@ -192,7 +192,7 @@ function processGrades(dataurl,db){
 				});
 			});
 		grades.forEach(function(rec){
-			let key = ["grade","logprog",rec.student.OrgDefinedId,rec.cat,rec.item,rec.date].join(app.KeyDelim);
+			let key = ["grade","logprog",rec.student.Username,rec.cat,rec.item,rec.date].join(app.KeyDelim);
 			db.upsert(key, function(doc){
 				rec.grade.grade = rec.grade.grade || 0;
 				rec.grade.pct = rec.grade.pct || 0;

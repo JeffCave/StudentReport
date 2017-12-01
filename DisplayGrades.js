@@ -12,10 +12,12 @@ function DisplayGrades(override){
 	
 	setTimeout(function(){
 		let opts = {
+		    //reduce:false,
+		    //include_docs:true,
 			group:true,
 			group_level:3,
-			startkey:['logprog','0000002'],
-			endkey:['logprog','0000002',{}],
+			startkey:['logprog','W0000002'],
+			endkey:['logprog','W0000002',{}],
 		};
 		
 		db.query('metrics/gradesByDate', opts)
@@ -91,9 +93,11 @@ function DisplayGrades(override){
 				// Define the line
 				let lineOf = d3.line()
 					.curve(d3.curveStepBefore)
-					.x(function(d) { 
-						d = app.parseDate(d.key[2]); 
-						return x(d);;
+					.x(function(d) {
+					    let rtn = d.key[2];
+						rtn = app.parseDate(d.key[2]);
+						rtn = x(rtn);
+						return rtn;
 					})
 					.y(function(d) { 
 						return y(d.value.of); 

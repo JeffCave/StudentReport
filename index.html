@@ -126,10 +126,13 @@ db.upsert('_design/metrics',function(oldDoc){
 	    ;
 	d3.select('#dbReset')
 		.on("click", function() {
+            d3.select("body").html("Clearing cache...");
 			db.destroy()
-                .then(window.location.reload)
+                .then(function(){
+                    window.location.reload();
+                })
                 .catch(function(err){
-                    
+                    console.log(err);
                 });
 		});
   </script>

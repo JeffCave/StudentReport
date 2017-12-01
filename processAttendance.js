@@ -12,10 +12,6 @@ function processAttend(dataurl,db){
 		'Email'
 	];
 	
-	function parserHeader(row){
-		header = row;
-	}
-	
 	function parserAttendance(row){
 		let student = {};
 		Object.keys(row).forEach((d)=>{
@@ -36,8 +32,12 @@ function processAttend(dataurl,db){
 					//console.debug("=2="+date);
 					date = date.toISOString().substr(0,10);
 					//console.debug("=3="+date);
+					let id = ['attend',"logprog",student.username]
+					   .concat(date.split('-'))
+					   .join(app.KeyDelim)
+					   ;
 					let attend ={
-					    _id:['attend',"logprog",student.username,date].join(app.keyDelim),
+					    _id:id,
 						student:student,
 						date:date,
 						attendance:['A','P'].indexOf(d),

@@ -21,8 +21,8 @@ function DisplayAttendance(override){
 		    include_docs:true
 			//group:true,
 			//group_level:3,
-			//startkey:['logprog','0000002'],
-			//endkey:['logprog','0000002',{}],
+			//startkey:['logprog','W0000002'],
+			//endkey:['logprog','W0000002',{}],
 		};
 		
 		db.query('metrics/attendance', opts)
@@ -75,8 +75,8 @@ function DisplayAttendance(override){
 					return a;
 				},[]);
 				projections.reverse();
-				console.log(result);
-				console.log(projections);
+				//console.log(result);
+				//console.log(projections);
 				
 				// Set the dimensions of the canvas / graph
 				let margin = {top: 30, right: 50, bottom: 30, left: 20};
