@@ -1,0 +1,55 @@
+@CHARSET "UTF-8";
+
+*{
+    position:relative;
+}
+
+svg {
+	font: 14px 'Open Sans';
+}
+
+details > div {
+	display:inline-block;
+	margin:1em;
+}
+
+.alert-success{
+    background-color:DarkGreen;
+}
+
+.alert-danger{
+    background-color:Firebrick;
+}
+.alert-warn{
+    background-color:darkorange;
+}
+.alert-fail{
+    background-color:black;
+}
+body > details > summary {
+    vertical-align:middle;
+}
+summary > h1{
+    display:inline-block;
+}
+summary > h2{
+    display:inline-block;
+}
+body > details > summary > sub{
+    position:relative;
+    margin-left:1em;
+    vertical-align:baseline;
+}
+body > details > summary > span{
+    position:relative;
+    display:inline-block;
+    border:0.1em solid black;
+    
+    min-height:0.8em;
+    min-width:0.8em;
+    border-radius:0.4em;
+    
+    background-color:white;
+    color:white;
+    font-weight:bold;
+}

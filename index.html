@@ -1,179 +1,21 @@
 <html>
 <head>
  <title>Grades Report - Student View</title>
- <style>
-    *{
-        position:relative;
-    }
-	svg {
-		font: 14px 'Open Sans';
-	}
-	details > div {
-		display:inline-block;
-		margin:1em;
-	}
-	.alert-success{
-	    background-color:DarkGreen;
-	}
-	.alert-danger{
-	    background-color:Firebrick;
-	}
-	.alert-warn{
-	    background-color:darkorange;
-	}
-	.alert-fail{
-	    background-color:black;
-	}
-	body > details > summary {
-	    vertical-align:middle;
-	}
-    summary > h1{
-        display:inline-block;
-    }
-    summary > h2{
-        display:inline-block;
-    }
-    body > details > summary > sub{
-        position:relative;
-        margin-left:1em;
-        vertical-align:baseline;
-    }
-    body > details > summary > span{
-        position:relative;
-        display:inline-block;
-        border:0.1em solid black;
-        
-        min-height:0.8em;
-	    min-width:0.8em;
-        border-radius:0.4em;
-        
-	    background-color:white;
-	    color:white;
-	    font-weight:bold;
-	}
- </style>
+ 
  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" integrity="sha256-aYYnqVVhAJ4lDammP4Qybmxg3/HVpA7/sNSCntyCyu4=" crossorigin="anonymous"></script>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/5.3.1/pouchdb.min.js"></script>
  <script src="https://cdn.rawgit.com/pouchdb/upsert/master/dist/pouchdb.upsert.min.js"></script>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.3/moment.min.js" integrity="sha256-/As5lS2upX/fOCO/h/5wzruGngVW3xPs3N8LN4FkA5Q=" crossorigin="anonymous"></script>
+ 
+ <script src="./lib/utils.js"></script>
+ <script src="./lib/app.js"></script>
+ 
+ <link rel="stylesheet" href="./lib/main.css" />
 
- <script>
-	/*globals d3 DisplayGrades processGrades processAttend StudentReport PouchDB DisplayAttendance*/
-	'use strict';
-	JSON.clone = JSON.clone || function(json){
-		let clone = JSON.stringify(json);
-		clone = JSON.parse(clone);
-		return clone;
-	};
-	
-	let constants = {
-		KeyDelim: '.',
-		today: (new Date()).toISOString().substr(0,10),
-	};
-	
-	let app = {
-		KeyDelim: constants.KeyDelim,
-		config:{
-		    effective:constants.today,
-		    student:"W0000002",
-		    group:"logprog"
-		},
-		docsDiffer: function(origDoc, inputDoc){
-			let oldDoc = JSON.clone(origDoc);
-			let newDoc = JSON.clone(inputDoc);
-			
-			for(let field in oldDoc){
-				if(field.substr(0,1) === '_'){
-					delete oldDoc[field];
-				}
-			}
-			for(let field in newDoc){
-				if(field.substr(0,1) === '_'){
-					delete newDoc[field];
-				}
-			}
-			
-			oldDoc = JSON.stringify(oldDoc);
-			newDoc = JSON.stringify(newDoc);
-			
-			let rtn = oldDoc !== newDoc;
-			return rtn;
-		},
-		parseDate: d3.timeParse("%Y-%m-%d"),
-		formatDate: d3.timeFormat("%Y-%m-%d"),
-        statuses:{
-            fail:{
-                color:'black',
-                name:'fail',
-                css:'alert-fail'
-            },
-            warn:{
-                color:'darkorange',
-                name:'warn',
-                css:'alert-warn'
-            },
-            danger:{
-                color:'firebrick',
-                name:'danger',
-                css:'alert-danger'
-            },
-            success:{
-                color:'darkgreen',
-                name:'success',
-                css:'alert-success'
-            },
-        }
-	};
-	
-    var d1 = document;
-	
- </script>
-
- <script language="javascript" type="text/javascript" src="processdata.js"></script>
- <script language="javascript" type="text/javascript" src="processAttendance.js"></script>
+ <script src="./processdata.js"></script>
+ <script src="./processAttendance.js"></script>
  <script src="./pouchdb/metrics.js"></script>
  
- <script>
-    'use strict';
-	let db = new PouchDB('grades',{
-		auto_compaction: false, 
-		//adapter:'websql',
-	});
-	//db.destroy();
-	let remoteCouch = false;
-	
-    db.upsert('_design/metrics',function(oldDoc){
-    	console.debug('Generating database views...');
-    	let newDoc = {};
-    	newDoc.views = StudentReport.metrics.views;
-    	if(!app.docsDiffer(oldDoc,newDoc)) {
-    		console.log('metrics calculations: current');
-    		return false;
-    	}
-    	console.log('metrics calculations: rebuilding (change detected)');
-    	return newDoc;
-    			
-    }).then(function(){
-    	db.changes({
-    		since: 'now',
-    		live: true,
-    		include_docs: true
-    	}).on('change', function() {
-    	    RedrawData();
-    	}).on('error', function (err) {
-    		console.log(err);
-    	});
-    })
-    .catch(function(err){
-    	console.log(err.message);
-    });
-    
-    function RedrawData(){
-		DisplayGrades();
-        DisplayAttendance();
-    }
-
-</script>
 </head>
 <body>
 
