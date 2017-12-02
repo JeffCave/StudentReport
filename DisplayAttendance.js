@@ -1,3 +1,4 @@
+/* global moment */
 /**
  * https://strongriley.github.io/d3/ex/calendar.html
  * https://bl.ocks.org/micahstubbs/89c6bd879d64aa511372064c6cf85711
@@ -5,8 +6,8 @@
 'use strict';
 
 let DisplayAttendance_pending = false;
-function DisplayAttendance(override){
-	override = override || false;
+function DisplayAttendance(force){
+	let override = force || false;
 	if(override){
 		DisplayAttendance_pending = false;
 	}
@@ -14,6 +15,27 @@ function DisplayAttendance(override){
 		return;
 	}
 	DisplayAttendance_pending = true;
+	
+    const thresholds = [
+        {
+            minrate:0.85,
+            status:app.statuses.success,
+        },
+        {
+            minrate:0.80,
+            status:app.statuses.warn,
+        },
+        {
+            minrate:0.5,
+            status:app.statuses.danger,
+        },
+        {
+            minrate:0,
+            status:app.statuses.fail,
+        }
+        
+    ];
+
 	
 	setTimeout(function(){
 		let opts = {
@@ -55,7 +77,7 @@ function DisplayAttendance(override){
                     start:min.clone().day(0),
                     finish:max.clone().day(6),
                 };
-                gridRange.weeks = gridRange.finish.diff(gridRange.start,'weeks')
+                gridRange.weeks = gridRange.finish.diff(gridRange.start,'weeks');
                 
                 let table = d1.querySelector("#studentattendace > table");
                 if(!table){
@@ -74,20 +96,20 @@ function DisplayAttendance(override){
                             
                             let day = c + (r*row.cells.length);
                             day = gridRange.start.clone().add(day,'days');
-                            cell.setAttribute('title',day.format('Y-m-d'));
+                            cell.setAttribute('title',day.format('YYYY-MM-DD'));
                             
                             cell.style.backgroundColor = "lightgray";
                             cell.style.color = "lightgray";
                             
-                        };
-                    };
+                        }
+                    }
 
                 }
                 
                 data.forEach(function(d){
                    let week = d.date.diff(gridRange.start,'weeks');
                    let day = d.date.day();
-                   let cell = table.rows[day].cells[week]
+                   let cell = table.rows[day].cells[week];
                    cell.style.backgroundColor = d.value ? "firebrick" : "darkgreen";
                    cell.style.color = d.value ? "firebrick" : "darkgreen";
                    //cell.setAttribute('title',d.key);
@@ -108,8 +130,22 @@ function DisplayAttendance(override){
 		db.query('metrics/attendance', opts)
 			.then( function(result){
 			    let rec = result.rows[0].value;
-			    let text = (rec.sum * 100.0 / rec.count).toFixed(1);
-                d1.querySelector("#studentattendace summary span").innerText = text;
+			    let rate = rec.sum / rec.count;
+			    
+                let node = d1.querySelector("#studentattendace summary sub");
+                node.innerHTML = (rate * 1000.0).toFixed(0) + "&permil;";
+                node.innerHTML = (rate * 100.0).toFixed(1) + "%";
+                
+                node = d1.querySelector("#studentattendace summary span.indicator");
+                node.className += " alert-" + thresholds
+                    .filter(function(d){
+                        return d.minrate <= rate;
+                    })
+                    .sort(function(a,b){
+                        return b.minrate - a.minrate;
+                    })
+                    [0].status.name
+                    ;
 			});
 
 	},1000);
