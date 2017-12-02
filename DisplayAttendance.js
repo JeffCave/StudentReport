@@ -38,13 +38,15 @@ function DisplayAttendance(force){
 
 	
 	setTimeout(function(){
+	    let params = app.config;
+
 		let opts = {
 		    //reduce:false,
 		    //include_docs:true,
 			group:true,
 			group_level:5,
-			startkey:['logprog','W0000002'],
-			endkey:['logprog','W0000002',{}],
+			startkey:['logprog',params.student],
+			endkey:['logprog',params.student,{}],
 		};
 		db.query('metrics/attendance', opts)
 			.then( function(result){
@@ -80,8 +82,13 @@ function DisplayAttendance(force){
                 gridRange.weeks = gridRange.finish.diff(gridRange.start,'weeks');
                 
                 let table = d1.querySelector("#studentattendace > table");
+                if(table && table.student !== params.student){
+                    table.parentNode.removeChild(table);
+                    table = null;
+                }
                 if(!table){
                     table = d1.createElement("table");
+                    table.student = params.student;
                     let html = Array(gridRange.weeks)
                         .fill("<td><span>&#9724;</span></td>")
                         .join('')

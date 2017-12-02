@@ -27,7 +27,10 @@
 	body > details > summary {
 	    vertical-align:middle;
 	}
-    body > details > summary > h2{
+    summary > h1{
+        display:inline-block;
+    }
+    summary > h2{
         display:inline-block;
     }
     body > details > summary > sub{
@@ -40,9 +43,10 @@
         display:inline-block;
         border:0.1em solid black;
         
-        height:0.8em;
+        min-height:0.8em;
 	    min-width:0.8em;
         border-radius:0.4em;
+        
 	    background-color:white;
 	    color:white;
 	    font-weight:bold;
@@ -54,6 +58,7 @@
  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.3/moment.min.js" integrity="sha256-/As5lS2upX/fOCO/h/5wzruGngVW3xPs3N8LN4FkA5Q=" crossorigin="anonymous"></script>
 
  <script>
+	/*globals d3 DisplayGrades processGrades processAttend StudentReport PouchDB DisplayAttendance*/
 	'use strict';
 	JSON.clone = JSON.clone || function(json){
 		let clone = JSON.stringify(json);
@@ -68,7 +73,11 @@
 	
 	let app = {
 		KeyDelim: constants.KeyDelim,
-		effective:constants.today,
+		config:{
+		    effective:constants.today,
+		    student:"W0000002",
+		    group:"logprog"
+		},
 		docsDiffer: function(origDoc, inputDoc){
 			let oldDoc = JSON.clone(origDoc);
 			let newDoc = JSON.clone(inputDoc);
@@ -87,7 +96,7 @@
 			oldDoc = JSON.stringify(oldDoc);
 			newDoc = JSON.stringify(newDoc);
 			
-			let rtn = (oldDoc !== newDoc);
+			let rtn = oldDoc !== newDoc;
 			return rtn;
 		},
 		parseDate: d3.timeParse("%Y-%m-%d"),
@@ -130,37 +139,39 @@
 		auto_compaction: false, 
 		//adapter:'websql',
 	});
-	db.on('error', function (err) {
-	    console.debug(err)
-	});
 	//db.destroy();
 	let remoteCouch = false;
 	
-db.upsert('_design/metrics',function(oldDoc){
-	console.debug('Generating database views...');
-	let newDoc = {};
-	newDoc.views = StudentReport.metrics.views;
-	if(!app.docsDiffer(oldDoc,newDoc)) {
-		console.log('metrics calculations: current');
-		return false;
-	}
-	console.log('metrics calculations: rebuilding (change detected)');
-	return newDoc;
-			
-}).then(function(){
-	db.changes({
-		since: 'now',
-		live: true,
-		include_docs: true
-	}).on('change', function(change) {
+    db.upsert('_design/metrics',function(oldDoc){
+    	console.debug('Generating database views...');
+    	let newDoc = {};
+    	newDoc.views = StudentReport.metrics.views;
+    	if(!app.docsDiffer(oldDoc,newDoc)) {
+    		console.log('metrics calculations: current');
+    		return false;
+    	}
+    	console.log('metrics calculations: rebuilding (change detected)');
+    	return newDoc;
+    			
+    }).then(function(){
+    	db.changes({
+    		since: 'now',
+    		live: true,
+    		include_docs: true
+    	}).on('change', function() {
+    	    RedrawData();
+    	}).on('error', function (err) {
+    		console.log(err);
+    	});
+    })
+    .catch(function(err){
+    	console.log(err.message);
+    });
+    
+    function RedrawData(){
 		DisplayGrades();
-	}).on('error', function (err) {
-		console.log(err);
-	});
-})
-.catch(function(err){
-	console.log(err.message);
-});
+        DisplayAttendance();
+    }
 
 </script>
 </head>
@@ -171,7 +182,7 @@ db.upsert('_design/metrics',function(oldDoc){
  <div>
   <input type="date" id="today" />
   <br />
-  <select>
+  <select id="student">
    <option value="W0000000">Joel, Billy</option>
    <option value="W0000001">Hutch, Starsky</option>
    <option value="W0000002">Young, Angus</option>
@@ -182,8 +193,14 @@ db.upsert('_design/metrics',function(oldDoc){
 	d3.select('#today')
 	    .property("value", constants.today)
 	    .on('change',function(){
-	        app.effective = d3.event.target.value;
-	        DisplayGrades();
+	        app.config.effective = d3.event.target.value;
+	        RedrawData();
+	    })
+	    ;
+	d3.select('#student')
+	    .on('change',function(){
+	        app.config.student = d3.event.target.value;
+	        RedrawData();
 	    })
 	    ;
 	d3.select('#dbReset')
@@ -231,26 +248,30 @@ db.upsert('_design/metrics',function(oldDoc){
  </div>
 </details>
 
-<h1>Joel, Billy</h1>
-<p>W000000</p>
 <details>
- <summary>
-  <table id="overall">
-   <caption></caption>
-   <tbody>
-    <tr>
-     <td><div style="width:50%;"></div>Course Progress (10 of 20 days)</td>
-    </tr>
-    <tr>
-     <td><div style='width:40%;'></div>Grades (40% of Total Grades)</td>
-    </tr>
-   </tbody>
+ <summary><h1>Joel, Billy</h1></summary>
+ <table>
+   <tr>
+    <th>Student ID</th>
+    <td>W000000</td>
+   </tr>
+   <tr>
+    <th>Effective</td>
+    <td>2017-11-12</td>
+   </tr>
+   <tr>
+    <th>As At</th>
+    <td>2017-11-12</td>
+   </tr>
   </table>
- </summary>
 </details>
 
 <details id="studentgrades" open>
- <summary>Grades (???%)</summary>
+ <summary>
+    <span class='indicator'></span>
+    <h2>Grades</h2>
+    <sub></sub>
+ </summary>
  <script language="javascript" type="text/javascript" src="DisplayGrades.js"></script>
  <script>
 	DisplayGrades();
@@ -258,12 +279,15 @@ db.upsert('_design/metrics',function(oldDoc){
 </details>
 
 <details id="studentattendace" open>
- <summary><span class='indicator'></span><h2>Attendance</h2><sub></sub></summary>
+ <summary>
+    <span class='indicator'></span>
+    <h2>Attendance</h2>
+    <sub></sub>
+ </summary>
  <style>
     #studentattendace table{
-        --border:1px solid black;
-        --border-collapse: collapse;
         background-color:WhiteSmoke;
+        box-shadow: 0px 0px 0.1em WhiteSmoke;
         margin:1em;
     }
     #studentattendace table tr{
@@ -273,12 +297,11 @@ db.upsert('_design/metrics',function(oldDoc){
         position:relative;
         height:1em;
         width:1em;
-        --border:1px solid black;
-        background-color: lightgrey;
-        color: lightgrey;
+        background-color: LightGrey;
+        color: LightGrey;
         overflow:hidden;
-        padding:0px;
-        margin:0px;
+        padding:0;
+        margin:0;
         border-radius:3px;
     }
     #studentattendace table td span{

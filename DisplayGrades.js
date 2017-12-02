@@ -1,8 +1,8 @@
 'use strict';
 let DisplayGrades_pending = false;
-function DisplayGrades(override){
-	override = override || false;
-	if(override){
+function DisplayGrades(config){
+    config = config || {};
+	if(config.force){
 		DisplayGrades_pending = false;
 	}
 	if(DisplayGrades_pending){
@@ -10,20 +10,45 @@ function DisplayGrades(override){
 	}
 	DisplayGrades_pending = true;
 	
+	const thresholds = [
+        {
+            minrate:0.81,
+            status:app.statuses.success,
+        },
+        {
+            minrate:0.72,
+            status:app.statuses.warn,
+        },
+        {
+            minrate:0.57,
+            status:app.statuses.danger,
+        },
+        {
+            minrate:0,
+            status:app.statuses.fail,
+        }
+        
+    ];
+	
 	setTimeout(function(){
+		let params = app.config;
+		let effective = params.effective;
+		
 		let opts = {
 		    //reduce:false,
 		    //include_docs:true,
 			group:true,
 			group_level:3,
-			startkey:['logprog','W0000002'],
-			endkey:['logprog','W0000002',{}],
+			startkey:['logprog',params.student],
+			endkey:['logprog',params.student,{}],
 		};
 		
 		db.query('metrics/gradesByDate', opts)
 			.then( function(result){
 				DisplayGrades_pending = false;
 				let projections = [];
+				
+				
 				result.rows = result.rows.reduce(function(a,d){
 					d = JSON.clone(d);
 					if(a.length === 0){ 
@@ -33,7 +58,7 @@ function DisplayGrades(override){
 					let last = a[a.length-1];
 					d.value.of += last.value.of;
 					// either calulcate the grade they have acheived
-					if(app.effective > d.key[2]){
+					if(effective > d.key[2]){
 						d.value.grade += last.value.grade || 0;
 						d.value.pct = d.value.grade / d.value.of;
 					}
@@ -69,6 +94,30 @@ function DisplayGrades(override){
 					}
 					return a;
 				},[]);
+				
+				let final = projections[0];
+                let node = d1.querySelector("#studentgrades summary sub");
+                node.innerHTML = [
+                        "<table>",
+                        " <tr><th>Possible</th><td>",(final.possible * 100.0).toFixed(1) + "%</td></tr>",
+                        " <tr><th>Probable</th><td>",(final.avg * 100.0).toFixed(1) + "%</td></tr>",
+                        " <tr><th>Tangible</th><td>",(final.pct * 100.0).toFixed(1) + "%</td></tr>",
+                        "</table>"
+                    ].join('');
+                node.innerHTML = (final.avg * 100.0).toFixed(1) + "%";
+                
+                node = d1.querySelector("#studentgrades summary span.indicator");
+                node.className += " alert-" + thresholds
+                    .filter(function(d){
+                        return d.minrate <= final.avg;
+                    })
+                    .sort(function(a,b){
+                        return b.minrate - a.minrate;
+                    })
+                    [0].status.name
+                    ;
+
+				
 				projections.reverse();
 				//console.log(result);
 				//console.log(projections);
@@ -139,7 +188,11 @@ function DisplayGrades(override){
 					;
 				
 				// Adds the svg canvas
-				let svg = d3.select("#studentgrades")
+				let svg = d1.querySelector("#studentgrades svg");
+				if(svg !== null){
+				    svg.parentNode.removeChild(svg);
+				}
+				svg = d3.select("#studentgrades")
 					.append("svg")
 						.attr("width", width + margin.left + margin.right)
 						.attr("height", height + margin.top + margin.bottom)
@@ -236,10 +289,10 @@ function DisplayGrades(override){
 						.attr("d", linePossible(gradeVals))
 					;
 				// Today Line
-				let xToday = x(app.parseDate(app.effective));
+				let xToday = x(app.parseDate(effective));
 				let todayMarker = svg
 				    .selectAll('g#today')
-				    .data([app.effective])
+				    .data([effective])
 				    ;
 				let entry = todayMarker.enter()
 				    .append('g')
@@ -250,7 +303,7 @@ function DisplayGrades(override){
                 entry.append('text')
 			        .attr('font-size',10)
 					.attr('opacity',0)
-					.text(app.effective)
+					.text(effective)
 					;
 					
 				let textSize = Array.from(document.querySelectorAll('g#today > text'))[0].getBoundingClientRect();
@@ -266,7 +319,7 @@ function DisplayGrades(override){
 					.attr('opacity',0)
 					.attr('x',rectSize.x+10)
 					.attr('y',14)
-					.text(app.effective)
+					.text(effective)
 					.transition()
 						.delay(1000)
 						.duration(1000)
