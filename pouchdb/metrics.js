@@ -99,11 +99,23 @@ StudentReport.metrics.views = {
             //    attendance: doc.attendance,
 			//});
         }.toString()
-        //,reduce:"_stats",
+        //,reduce:"_stats"
         
         ,reduce: function(keys,values,rereduce){
             let vals = values;
-            vals = vals.reduce(function(a,d){return a+d;},0);
+            if(!rereduce){
+                vals = vals.map(function(d){
+                    return {
+                        sum:d||0,
+                        count:1,
+                    };
+                });
+            }
+            vals = vals.reduce(function(a,d){
+                    a.sum += d.sum;
+                    a.count += d.count;
+                    return a;
+                },{sum:0,count:0});
             return vals;
         }.toString()
         

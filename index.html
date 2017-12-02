@@ -13,7 +13,8 @@
  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" integrity="sha256-aYYnqVVhAJ4lDammP4Qybmxg3/HVpA7/sNSCntyCyu4=" crossorigin="anonymous"></script>
  <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pouchdb/5.3.1/pouchdb.min.js"></script>
  <script language="javascript" type="text/javascript" src="https://cdn.rawgit.com/pouchdb/upsert/master/dist/pouchdb.upsert.min.js"></script>
- 
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.3/moment.min.js" integrity="sha256-/As5lS2upX/fOCO/h/5wzruGngVW3xPs3N8LN4FkA5Q=" crossorigin="anonymous"></script>
+
  <script>
 	'use strict';
 	JSON.clone = JSON.clone || function(json){
@@ -55,6 +56,8 @@
 		formatDate: d3.timeFormat("%Y-%m-%d"),
 
 	};
+	
+    var d1 = document;
 	
  </script>
 
@@ -187,7 +190,7 @@ db.upsert('_design/metrics',function(oldDoc){
  </summary>
 </details>
 
-<details id="studentgrades" open>
+<details id="studentgrades">
  <summary>Grades (???%)</summary>
  <script language="javascript" type="text/javascript" src="DisplayGrades.js"></script>
  <script>
@@ -196,7 +199,36 @@ db.upsert('_design/metrics',function(oldDoc){
 </details>
 
 <details id="studentattendace" open>
- <summary>Attendance</summary>
+ <summary>Attendance (<span>0</span>%)</summary>
+ <style>
+    #studentattendace table{
+        --border:1px solid black;
+        --border-collapse: collapse;
+        background-color:WhiteSmoke;
+        margin:1em;
+    }
+    #studentattendace table tr{
+        height:1em;
+    }
+    #studentattendace table td{
+        position:relative;
+        height:1em;
+        width:1em;
+        --border:1px solid black;
+        background-color: lightgrey;
+        color: lightgrey;
+        overflow:hidden;
+        padding:0px;
+        margin:0px;
+        border-radius:3px;
+    }
+    #studentattendace table td span{
+        display:block;
+        position:absolute;
+        padding:0px;
+        margin:0px;
+    }
+ </style>
  <script language="javascript" type="text/javascript" src="DisplayAttendance.js"></script>
  <script>
 	DisplayAttendance();

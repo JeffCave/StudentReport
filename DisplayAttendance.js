@@ -24,117 +24,93 @@ function DisplayAttendance(override){
 			startkey:['logprog','W0000002'],
 			endkey:['logprog','W0000002',{}],
 		};
-		
 		db.query('metrics/attendance', opts)
 			.then( function(result){
 				DisplayAttendance_pending = false;
 				// Adds the svg canvas
 				
-				// Set the dimensions of the canvas / graph
-                let width = 960;
-                let height = 136;
-                let cellSize = 17; // cell size
-				//let margin = {top: 30, right: 50, bottom: 30, left: 20};
-				//let width = 600 - margin.left - margin.right;
-				//let height = 270 - margin.top - margin.bottom;
-				
-                let percent = d3.format(".1%");
-                let format = d3.timeFormat("%Y-%m-%d");
-                
-                let color = d3.scaleQuantize()
-                    .domain([0, 1])
-                    .range(d3.range(11).map(function(d) { return "q" + d + "-11"; }))
+				let min = moment("3000-12-31");
+				let max = moment(0);
+                let data = result.rows
+                    .filter(function(d){
+                        return !isNaN(d.value.sum);
+                    })
+                    .map(function(d){
+                        let rtn = {
+                            key:JSON.clone(d.key).slice(2,5).join('-'),
+                            value: d.value.sum,
+                        };
+                        rtn.date = moment(rtn.key);
+                        if(rtn.date.diff(min) < 0){
+                            min = rtn.date;
+                        }
+                        if(rtn.date.diff(max) > 0){
+                            max = rtn.date;
+                        }
+                        return rtn;
+                    })
                     ;
                 
-                let svg = d3.select("#studentattendace").selectAll("svg")
-                    .data([2017])
-                    .enter().append("svg")
-                        .attr("width", width)
-                        .attr("height", height)
-                        .attr("class", "RdYlGn")
-                    .append("g")
-                        .attr("transform", "translate(" + ((width - cellSize * 53) / 2) + "," + (height - cellSize * 7 - 1) + ")")
-                    ;
+                let gridRange = {
+                    start:min.clone().day(0),
+                    finish:max.clone().day(6),
+                };
+                gridRange.weeks = gridRange.finish.diff(gridRange.start,'weeks')
                 
-                svg.append("text")
-                    .attr("transform", "translate(-6," + cellSize * 3.5 + ")rotate(-90)")
-                    .style("text-anchor", "middle")
-                    .text(function(d) {
-                        return d; 
-                    });
-                
-                
-                
-                function monthPath(t0) {
-                    let t1 = new Date(t0.getFullYear(), t0.getMonth() + 1, 0),
-                        d0 = t0.getDay(), 
-                        w0 = d3.timeWeek.count(d3.timeYear(t0), t0),
-                        d1 = t1.getDay(), 
-                        w1 = d3.timeWeek.count(d3.timeYear(t1), t1)
+                let table = d1.querySelector("#studentattendace > table");
+                if(!table){
+                    table = d1.createElement("table");
+                    let html = Array(gridRange.weeks)
+                        .fill("<td><span>&#9724;</span></td>")
+                        .join('')
                         ;
-                    return "M" + (w0 + 1) * cellSize + "," + d0 * cellSize
-                        + "H" + w0 * cellSize + "V" + 7 * cellSize
-                        + "H" + w1 * cellSize + "V" + (d1 + 1) * cellSize
-                        + "H" + (w1 + 1) * cellSize + "V" + 0
-                        + "H" + (w0 + 1) * cellSize + "Z"
-                        ;
-                }
+                    html = Array(7).fill(html).join('</tr><tr>');
+                    table.innerHTML = html;
+                    d1.querySelector("#studentattendace").appendChild(table);
+                    for(let r=table.rows.length-1; r>=0; r--){
+                        let row = table.rows[r];
+                        for(let c=row.cells.length-1; c>=0; c--){
+                            let cell = row.cells[c];
+                            
+                            let day = c + (r*row.cells.length);
+                            day = gridRange.start.clone().add(day,'days');
+                            cell.setAttribute('title',day.format('Y-m-d'));
+                            
+                            cell.style.backgroundColor = "lightgray";
+                            cell.style.color = "lightgray";
+                            
+                        };
+                    };
 
+                }
                 
-                
-                let rect = svg.selectAll(".day")
-                    .data(function(d) {
-                        return d3.timeDays(new Date(d, 0, 1), new Date(d + 1, 0, 1)); 
-                    })
-                    .enter().append("rect")
-                        .attr("class", "day")
-                        .attr("width", cellSize)
-                        .attr("height", cellSize)
-                        .attr("x", function(d) { return d3.timeWeek.count(d3.timeYear(d), d) * cellSize; })
-                        .attr("y", function(d) { return d.getDay() * cellSize; })
-                        .datum(format);
-                
-                rect.append("title")
-                    .text(function(d) {
-                        return d; 
-                    });
-                
-                svg.selectAll(".month")
-                    .data(function(d) {
-                        return d3.timeMonths(new Date(d, 0, 1), new Date(d + 1, 0, 1)); 
-                    })
-                    .enter().append("path")
-                        .attr("class", "month")
-                        .attr("d", monthPath)
-                        ;
-                
-                let data = result.rows.reduce(function(a,d){
-                    d.key.shift();
-                    d.key.shift();
-                    d.key = d.key.join("-");
-                    a[d.key] = (a[d.key] || 0) + d.value;
-                    return a;
-                },{});
-                
-                rect.filter(function(d){
-                        let val = data[d];
-                        val = isNaN(val);
-                        val = !val;
-                        return val;
-                    })
-                    .style("opacity", function(d) {
-                            let rtn = data[d]; 
-                            return rtn;
-                        })
-                    .select("title")
-                        .text(function(d) {
-                            return d + ": " + percent(data[d]); 
-                        })
-                    ;
-                    
+                data.forEach(function(d){
+                   let week = d.date.diff(gridRange.start,'weeks');
+                   let day = d.date.day();
+                   let cell = table.rows[day].cells[week]
+                   cell.style.backgroundColor = d.value ? "firebrick" : "darkgreen";
+                   cell.style.color = d.value ? "firebrick" : "darkgreen";
+                   //cell.setAttribute('title',d.key);
+                });
 			})
 			.catch(function(err){
 				console.log(err);
 			});
+		
+		opts = {
+		    //reduce:false,
+		    //include_docs:true,
+			group:true,
+			group_level:2,
+			startkey:['logprog','W0000002'],
+			endkey:['logprog','W0000002',{}],
+		};
+		db.query('metrics/attendance', opts)
+			.then( function(result){
+			    let rec = result.rows[0].value;
+			    let text = (rec.sum * 100.0 / rec.count).toFixed(1);
+                d1.querySelector("#studentattendace summary span").innerText = text;
+			});
+
 	},1000);
 }
