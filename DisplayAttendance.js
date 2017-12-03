@@ -114,9 +114,12 @@ function DisplayAttendance(force){
                 }
                 
                 data.forEach(function(d){
-                   let week = d.date.diff(gridRange.start,'weeks');
+                   let week = d.date.diff(gridRange.start,'weeks')-1;
                    let day = d.date.day();
                    let cell = table.rows[day].cells[week];
+                   if(!cell){
+                       console.log("PROBLEM");
+                   }
                    cell.style.backgroundColor = d.value ? "firebrick" : "darkgreen";
                    cell.style.color = d.value ? "firebrick" : "darkgreen";
                    //cell.setAttribute('title',d.key);

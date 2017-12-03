@@ -119,6 +119,22 @@ StudentReport.metrics.views = {
             return vals;
         }.toString()
         
-    }
+    },
+
+   'students': {
+		map: function(doc) {
+		    if(!doc.student) return;
+		    if(!doc.student.Username ) return;
+		    console.log(doc.student);
+		    let key = [
+		        doc.student.Username,
+		        doc.student.LastName,
+		        doc.student.FirstName,
+            ];
+			emit(key,doc.student);
+        }.toString(),
+        reduce:"_count"
+    },
+
 };
 

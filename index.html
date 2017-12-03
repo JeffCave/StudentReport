@@ -15,9 +15,14 @@
  <script src="./processdata.js"></script>
  <script src="./processAttendance.js"></script>
  <script src="./pouchdb/metrics.js"></script>
+ <script src="./DisplayAttendance.js"></script>
+ <script src="./DisplayGrades.js"></script>
+ <script src="./DisplayStudent.js"></script>
+
+
  
 </head>
-<body>
+<body onload="app.init();">
 
 <details open="open">
  <summary>Options</summary>
@@ -25,37 +30,58 @@
   <input type="date" id="today" />
   <br />
   <select id="student">
-   <option value="W0000000">Joel, Billy</option>
-   <option value="W0000001">Hutch, Starsky</option>
-   <option value="W0000002">Young, Angus</option>
   </select>
   <br />
   <button id="dbReset">Reset DB</button>
   <script>
-	d3.select('#today')
-	    .property("value", constants.today)
-	    .on('change',function(){
-	        app.config.effective = d3.event.target.value;
-	        RedrawData();
-	    })
-	    ;
-	d3.select('#student')
-	    .on('change',function(){
-	        app.config.student = d3.event.target.value;
-	        RedrawData();
-	    })
-	    ;
-	d3.select('#dbReset')
-		.on("click", function() {
+    d3.select('#today')
+        .property("value", constants.today)
+        .on('change',function(){
+            app.config.effective = d3.event.target.value;
+            app.RedrawData();
+        })
+        ;
+    let opts = {
+        //reduce:false,
+        //include_docs:true
+        group:true,
+        group_level:3,
+        //startkey:['logprog'],
+        //endkey:['logprog',{}],
+    };
+            
+    db.query('metrics/students', opts)
+        .then( function(result){
+            let select = d1.querySelector('#student');
+            select.innerHTML = '';
+            result.rows
+                .map(function(d){
+                    let rtn = {
+                        name: JSON.clone(d.key)
+                    };
+                    rtn.id = rtn.name.shift();
+                    return rtn;
+                })
+                .forEach(function(d){
+                    let opt = d1.createElement('option');
+                    opt.value = d.id;
+                    opt.innerText = d.name.join(', ');
+                    select.appendChild(opt);
+                })
+                ;
+        });
+
+    d3.select('#dbReset')
+        .on("click", function() {
             d3.select("body").html("Clearing cache...");
-			db.destroy()
+            db.destroy()
                 .then(function(){
                     window.location.reload();
                 })
                 .catch(function(err){
                     console.log(err);
                 });
-		});
+        });
   </script>
  </div>
  <div>
@@ -64,48 +90,34 @@
   Attendance<br />
   <input id="fileAttend" type="file" accept=".csv" />
   <script>
-	d3.select('#fileGrades')
-		.on("change", function() {
-			let reader = new FileReader();
-			reader.onloadend = function(evt) {
-				let dataUrl = evt.target.result;
-				processGrades(dataUrl,db);
-			};
-			let file = d3.event.target.files[0];
-			reader.readAsDataURL(file);
-		});
-	d3.select('#fileAttend')
-		.on("change", function() {
-			let reader = new FileReader();
-			reader.onloadend = function(evt) {
-				let dataUrl = evt.target.result;
-				processAttend(dataUrl,db);
-			};
-			let file = d3.event.target.files[0];
-			reader.readAsDataURL(file);
-		});
+    d3.select('#fileGrades')
+        .on("change", function() {
+            let reader = new FileReader();
+            reader.onloadend = function(evt) {
+                let dataUrl = evt.target.result;
+                processGrades(dataUrl,db);
+            };
+            let file = d3.event.target.files[0];
+            reader.readAsDataURL(file);
+        });
+    d3.select('#fileAttend')
+        .on("change", function() {
+            let reader = new FileReader();
+            reader.onloadend = function(evt) {
+                let dataUrl = evt.target.result;
+                processAttend(dataUrl,db);
+            };
+            let file = d3.event.target.files[0];
+            reader.readAsDataURL(file);
+        });
   </script>
  </div>
  <div>
  </div>
 </details>
 
-<details>
+<details id='studentdata'>
  <summary><h1>Joel, Billy</h1></summary>
- <table>
-   <tr>
-    <th>Student ID</th>
-    <td>W000000</td>
-   </tr>
-   <tr>
-    <th>Effective</td>
-    <td>2017-11-12</td>
-   </tr>
-   <tr>
-    <th>As At</th>
-    <td>2017-11-12</td>
-   </tr>
-  </table>
 </details>
 
 <details id="studentgrades" open>
@@ -114,10 +126,6 @@
     <h2>Grades</h2>
     <sub></sub>
  </summary>
- <script language="javascript" type="text/javascript" src="DisplayGrades.js"></script>
- <script>
-	DisplayGrades();
- </script>
 </details>
 
 <details id="studentattendace" open>
@@ -153,10 +161,6 @@
         margin:0px;
     }
  </style>
- <script language="javascript" type="text/javascript" src="DisplayAttendance.js"></script>
- <script>
-	DisplayAttendance();
- </script>
 </details>
 
 
