@@ -34,13 +34,14 @@
   <br />
   <button id="dbReset">Reset DB</button>
   <script>
-    d3.select('#today')
-        .property("value", constants.today)
-        .on('change',function(){
+    d3.select('#today').property("value",constants.today).on('change',function(){
             app.config.effective = d3.event.target.value;
             app.RedrawData();
-        })
-        ;
+        });
+    d3.select('#student').property("value",constants.today).on('change',function(){
+            app.config.student = d3.event.target.value;
+            app.RedrawData();
+        });
     let opts = {
         //reduce:false,
         //include_docs:true
