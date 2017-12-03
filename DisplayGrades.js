@@ -95,7 +95,18 @@ function DisplayGrades(config){
 					return a;
 				},[]);
 				
+				// Set the status dot color
 				let final = projections[0];
+				if(!final){
+				    final = result.rows[result.rows.length-1];
+				    final = {
+							date: final.key[2],
+							possible: final.value.grade,
+							avg: final.value.grade,
+							pct: final.value.grade,
+						};
+					projections.push(final);
+				}
                 let node = d1.querySelector("#studentgrades summary sub");
                 node.innerHTML = [
                         "<table>",
@@ -107,7 +118,7 @@ function DisplayGrades(config){
                 node.innerHTML = (final.avg * 100.0).toFixed(1) + "%";
                 
                 node = d1.querySelector("#studentgrades summary span.indicator");
-                node.className += " alert-" + thresholds
+                node.className = "indicator alert-" + thresholds
                     .filter(function(d){
                         return d.minrate <= final.avg;
                     })
@@ -117,7 +128,7 @@ function DisplayGrades(config){
                     [0].status.name
                     ;
 
-				
+				// REVERSE THE STRING AND PRINT 
 				projections.reverse();
 				//console.log(result);
 				//console.log(projections);
