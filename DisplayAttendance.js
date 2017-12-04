@@ -1,8 +1,4 @@
 /* global moment */
-/**
- * https://strongriley.github.io/d3/ex/calendar.html
- * https://bl.ocks.org/micahstubbs/89c6bd879d64aa511372064c6cf85711
- */
 'use strict';
 
 let DisplayAttendance_pending = false;
@@ -89,7 +85,7 @@ function DisplayAttendance(force){
                 if(!table){
                     table = d1.createElement("table");
                     table.student = params.student;
-                    let html = Array(gridRange.weeks)
+                    let html = Array(gridRange.weeks+1)
                         .fill("<td><span>&#9724;</span></td>")
                         .join('')
                         ;
@@ -101,7 +97,7 @@ function DisplayAttendance(force){
                         for(let c=row.cells.length-1; c>=0; c--){
                             let cell = row.cells[c];
                             
-                            let day = c + (r*row.cells.length);
+                            let day = (c * table.rows.length) + r;
                             day = gridRange.start.clone().add(day,'days');
                             cell.setAttribute('title',day.format('YYYY-MM-DD'));
                             
@@ -114,14 +110,14 @@ function DisplayAttendance(force){
                 }
                 
                 data.forEach(function(d){
-                   let week = d.date.diff(gridRange.start,'weeks')-1;
+                   let week = d.date.diff(gridRange.start,'weeks');
                    let day = d.date.day();
                    let cell = table.rows[day].cells[week];
                    if(!cell){
                        console.log("PROBLEM");
                    }
-                   cell.style.backgroundColor = d.value ? "firebrick" : "darkgreen";
-                   cell.style.color = d.value ? "firebrick" : "darkgreen";
+                   cell.style.color = d.value ? "darkgreen" : "firebrick" ;
+                   cell.style.backgroundColor = cell.style.color;
                    //cell.setAttribute('title',d.key);
                 });
 			})
@@ -134,8 +130,8 @@ function DisplayAttendance(force){
 		    //include_docs:true,
 			group:true,
 			group_level:2,
-			startkey:['logprog','W0000002'],
-			endkey:['logprog','W0000002',{}],
+			startkey:['logprog',params.student],
+			endkey:['logprog',params.student,{}],
 		};
 		db.query('metrics/attendance', opts)
 			.then( function(result){
@@ -147,7 +143,7 @@ function DisplayAttendance(force){
                 node.innerHTML = (rate * 100.0).toFixed(1) + "%";
                 
                 node = d1.querySelector("#studentattendace summary span.indicator");
-                node.className += " alert-" + thresholds
+                node.className = "indicator alert-" + thresholds
                     .filter(function(d){
                         return d.minrate <= rate;
                     })
