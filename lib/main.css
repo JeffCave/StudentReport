@@ -1,7 +1,15 @@
 @CHARSET "UTF-8";
 
+@import url('https://fonts.googleapis.com/css?family=Cabin+Sketch|Lora|Open+Sans');
+
 *{
     position:relative;
+}
+
+body{
+    font-family: 'Lora', serif;
+    font-family: 'Cabin Sketch', cursive;
+    font-family: 'Open Sans', sans-serif;
 }
 
 svg {
