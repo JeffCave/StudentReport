@@ -46,6 +46,8 @@ function DisplayGrades(config){
 		db.query('metrics/gradesByDate', opts)
 			.then( function(result){
 				DisplayGrades_pending = false;
+				if(result.rows.length === 0) return;
+				
 				let projections = [];
 				
 				

@@ -54,6 +54,7 @@ function DisplayGradeAttend(force){
         			        return a;
         			    },rates)
         			    
+						if(!rates[params.student]) return;
         			    let current = JSON.clone(rates[params.student]);
         			    
         			    rates = Object.entries(rates).reduce(function(a,d){

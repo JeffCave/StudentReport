@@ -24,6 +24,8 @@ function DisplayStudent(force){
 		db.query('metrics/students', opts)
 			.then( function(result){
 				DisplayStudent_pending = false;
+				if(result.rows.length === 0) return;
+				
 				d1.querySelector("#studentdata summary h1").innerText = [ ""
 				        , result.rows[0].value.FirstName
 				        , result.rows[0].value.LastName

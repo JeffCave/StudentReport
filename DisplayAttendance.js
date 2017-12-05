@@ -47,6 +47,7 @@ function DisplayAttendance(force){
 		db.query('metrics/attendance', opts)
 			.then( function(result){
 				DisplayAttendance_pending = false;
+				if(result.rows.length === 0) return;
 				// Adds the svg canvas
 				
 				let min = moment("3000-12-31");
@@ -135,6 +136,7 @@ function DisplayAttendance(force){
 		};
 		db.query('metrics/attendance', opts)
 			.then( function(result){
+				if(!result.rows.length) return;
 			    let rec = result.rows[0].value;
 			    let rate = rec.sum / rec.count;
 			    
