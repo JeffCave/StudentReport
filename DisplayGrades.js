@@ -136,7 +136,7 @@ function DisplayGrades(config){
 				// Set the dimensions of the canvas / graph
 				let margin = {top: 30, right: 50, bottom: 30, left: 20};
 				let width = 600 - margin.left - margin.right;
-				let height = 270 - margin.top - margin.bottom;
+				let height = 480 - margin.top - margin.bottom;
 				
 				// Set the ranges
 				let x = d3.scaleTime().range([0, width]);

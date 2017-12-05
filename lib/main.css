@@ -16,6 +16,10 @@ svg {
 	font: 14px 'Open Sans';
 }
 
+th{
+    text-align:left;
+}
+
 details > div {
 	display:inline-block;
 	margin:1em;
