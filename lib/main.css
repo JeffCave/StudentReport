@@ -65,3 +65,10 @@ body > details > summary > span{
     color:white;
     font-weight:bold;
 }
+
+
+@media print {
+    * {
+        -webkit-print-color-adjust: exact; 
+    }
+}

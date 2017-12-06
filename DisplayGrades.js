@@ -157,8 +157,8 @@ function DisplayGrades(config){
 					.curve(d3.curveStepBefore)
 					.x(function(d) {
 					    let rtn = d.key[2];
-						rtn = app.parseDate(d.key[2]);
-						rtn = x(rtn);
+						rtn = moment(rtn);
+						rtn = x(rtn.toDate());
 						return rtn;
 					})
 					.y(function(d) { 
