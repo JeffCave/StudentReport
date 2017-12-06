@@ -43,36 +43,7 @@
             app.config.student = d3.event.target.value;
             app.RedrawData();
         });
-    let opts = {
-        //reduce:false,
-        //include_docs:true
-        group:true,
-        group_level:3,
-        //startkey:['logprog'],
-        //endkey:['logprog',{}],
-    };
-            
-    db.query('metrics/students', opts)
-        .then( function(result){
-            let select = d1.querySelector('#student');
-            select.innerHTML = '';
-            result.rows
-                .map(function(d){
-                    let rtn = {
-                        name: JSON.clone(d.key)
-                    };
-                    rtn.id = rtn.name.shift();
-                    return rtn;
-                })
-                .forEach(function(d){
-                    let opt = d1.createElement('option');
-                    opt.value = d.id;
-                    opt.innerText = d.name.join(', ');
-                    select.appendChild(opt);
-                })
-                ;
-        });
-
+    app.initOptions(); 
     d3.select('#dbReset')
         .on("click", function() {
             d3.select("body").html("Clearing cache...");
@@ -119,7 +90,7 @@
 </details>
 
 <details id='studentdata'>
- <summary><h1>Joel, Billy</h1></summary>
+ <summary><h1><!-- Student Name --></h1></summary>
 </details>
 
 <details id="studentgrades" open>
