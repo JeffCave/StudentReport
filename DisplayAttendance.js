@@ -3,15 +3,15 @@
 
 let DisplayAttendance_pending = false;
 function DisplayAttendance(force){
-	let override = force || false;
-	if(override){
-		DisplayAttendance_pending = false;
-	}
-	if(DisplayAttendance_pending){
-		return;
-	}
-	DisplayAttendance_pending = true;
-	
+    let override = force || false;
+    if(override){
+        DisplayAttendance_pending = false;
+    }
+    if(DisplayAttendance_pending){
+        return;
+    }
+    DisplayAttendance_pending = true;
+    
     const thresholds = [
         {
             minrate:0.85,
@@ -32,26 +32,50 @@ function DisplayAttendance(force){
         
     ];
 
-	
-	setTimeout(function(){
-	    let params = app.config;
+    
+    setTimeout(function(){
+        let params = app.config;
 
-		let opts = {
-		    //reduce:false,
-		    //include_docs:true,
-			group:true,
-			group_level:5,
-			startkey:['logprog',params.student],
-			endkey:['logprog',params.student,{}],
-		};
-		db.query('metrics/attendance', opts)
-			.then( function(result){
-				DisplayAttendance_pending = false;
-				if(result.rows.length === 0) return;
-				// Adds the svg canvas
-				
-				let min = moment("3000-12-31");
-				let max = moment(0);
+        let opts = {
+            //reduce:false,
+            //include_docs:true,
+            group:true,
+            group_level:2,
+            startkey:['logprog',params.student],
+            endkey:['logprog',params.student].concat(params.effective.split('-')),
+        };
+        db.query('metrics/attendance', JSON.clone(opts))
+            .then( function(result){
+                if(!result.rows.length) return;
+                let rec = result.rows[0].value;
+                let rate = rec.sum / rec.count;
+                
+                let node = d1.querySelector("#studentattendace summary sub");
+                //node.innerHTML = (rate * 1000.0).toFixed(0) + "&permil;";
+                node.innerHTML = (rate * 100.0).toFixed(1) + "%";
+                
+                node = d1.querySelector("#studentattendace summary span.indicator");
+                node.className = "indicator alert-" + thresholds
+                    .filter(function(d){
+                        return d.minrate <= rate;
+                    })
+                    .sort(function(a,b){
+                        return b.minrate - a.minrate;
+                    })
+                    [0].status.name
+                    ;
+            });
+
+        opts.group_level = 5;
+        opts.endkey = ['logprog',params.student,{}];
+		db.query('metrics/attendance', JSON.clone(opts))
+            .then( function(result){
+                DisplayAttendance_pending = false;
+                if(result.rows.length === 0) return;
+                // Adds the svg canvas
+                
+                let min = moment("3000-12-31");
+                let max = moment(0);
                 let data = result.rows
                     .filter(function(d){
                         return !isNaN(d.value.sum);
@@ -110,51 +134,29 @@ function DisplayAttendance(force){
 
                 }
                 
-                data.forEach(function(d){
-                   let week = d.date.diff(gridRange.start,'weeks');
-                   let day = d.date.day();
-                   let cell = table.rows[day].cells[week];
-                   if(!cell){
-                       console.log("PROBLEM");
-                   }
-                   cell.style.color = d.value ? "darkgreen" : "firebrick" ;
-                   cell.style.backgroundColor = cell.style.color;
-                   //cell.setAttribute('title',d.key);
-                });
-			})
-			.catch(function(err){
-				console.log(err);
-			});
-		
-		opts = {
-		    //reduce:false,
-		    //include_docs:true,
-			group:true,
-			group_level:2,
-			startkey:['logprog',params.student],
-			endkey:['logprog',params.student,{}],
-		};
-		db.query('metrics/attendance', opts)
-			.then( function(result){
-				if(!result.rows.length) return;
-			    let rec = result.rows[0].value;
-			    let rate = rec.sum / rec.count;
-			    
-                let node = d1.querySelector("#studentattendace summary sub");
-                node.innerHTML = (rate * 1000.0).toFixed(0) + "&permil;";
-                node.innerHTML = (rate * 100.0).toFixed(1) + "%";
-                
-                node = d1.querySelector("#studentattendace summary span.indicator");
-                node.className = "indicator alert-" + thresholds
-                    .filter(function(d){
-                        return d.minrate <= rate;
-                    })
-                    .sort(function(a,b){
-                        return b.minrate - a.minrate;
-                    })
-                    [0].status.name
-                    ;
-			});
+                data
+                    //.filter(function(d){
+                    //    return 0>d.date.diff(moment(params.effective));
+                    //})
+                    .forEach(function(d){
+                       let week = d.date.diff(gridRange.start,'weeks');
+                       let day = d.date.day();
+                       let cell = table.rows[day].cells[week];
+                       if(!cell){
+                           console.log("PROBLEM");
+                       }
+                       cell.style.color = d.value ? "darkgreen" : "firebrick" ;
+                       if(0<d.date.diff(moment(params.effective))){
+                           cell.style.color = "darkgray";
+                       }
+                       cell.style.backgroundColor = cell.style.color;
+                       //cell.setAttribute('title',d.key);
+                    });
+            })
+            .catch(function(err){
+                console.log(err);
+            });
+        
 
-	},1000);
+    },1000);
 }
