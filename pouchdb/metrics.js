@@ -125,7 +125,7 @@ StudentReport.metrics.views = {
 		map: function(doc) {
 		    if(!doc.student) return;
 		    if(!doc.student.Username ) return;
-		    console.log(doc.student);
+		    //console.log(doc.student);
 		    let key = [
 		        doc.student.Username,
 		        doc.student.LastName,

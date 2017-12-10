@@ -56,8 +56,24 @@ function processAttend(dataurl,db){
 		rows.forEach((row)=>{
 			parserAttendance(row);
 		});
-		db.bulkDocs(attendance);
+		ProgBar.start(attendance.length);
+		attendance.forEach(function(rec){
+			db.upsert(rec._id, function(doc){
+				if(app.docsDiffer(doc,rec)){
+					return rec;
+				}
+				return false;
+			}).then(function(rec){
+				//console.log(JSON.stringify(rec));
+				ProgBar.finish();
+			}).catch(function(err){
+				console.log(JSON.stringify(err));
+			});
+		});
 	});
+	
+	
+
 		
 		
 }

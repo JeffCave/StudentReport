@@ -38,6 +38,14 @@ details > div {
 .alert-fail{
     background-color:black;
 }
+
+#prog{
+	display:block;
+	position:relative;
+	height:15px;
+	width:100%;
+}
+
 body > details > summary {
     vertical-align:middle;
 }

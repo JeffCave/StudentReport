@@ -9,7 +9,8 @@
  
  <script src="./lib/utils.js"></script>
  <script src="./lib/app.js"></script>
- 
+ <script src="./lib/progress.js"></script>
+
  <link rel="stylesheet" href="./lib/main.css" />
 
  <script src="./processdata.js"></script>
@@ -19,11 +20,13 @@
  <script src="./DisplayGrades.js"></script>
  <script src="./DisplayGradeAttend.js"></script>
  <script src="./DisplayStudent.js"></script>
-
+ 
 
  
 </head>
 <body onload="app.init();">
+
+<progress id="prog" max="1" value="1" ></progress>
 
 <details open="open">
  <summary>Options</summary>

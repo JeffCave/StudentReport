@@ -190,9 +190,13 @@ function processGrades(dataurl,db){
 					console.log(JSON.stringify(err));
 				});
 			});
+			
+		ProgBar.start(grades.length);
 		grades.forEach(function(rec){
 			let key = ["grade","logprog",rec.student.Username,rec.cat,rec.item,rec.date].join(app.KeyDelim);
 			db.upsert(key, function(doc){
+				//if (!rec.date && !doc.date) return false;
+				
 				rec.grade.grade = rec.grade.grade || 0;
 				rec.grade.pct = rec.grade.pct || 0;
 				rec.weight.grade = rec.weight.grade || 0;
@@ -207,6 +211,7 @@ function processGrades(dataurl,db){
 				return false;
 			}).then(function(rec){
 				//console.log(JSON.stringify(rec));
+				ProgBar.finish();
 			}).catch(function(err){
 				console.log(JSON.stringify(err));
 			});
