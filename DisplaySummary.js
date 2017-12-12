@@ -8,7 +8,7 @@ function DisplaySummary(config){
 	if(DisplaySummary_pending){
 		return;
 	}
-	DisplaySummary_pending = 2;
+	DisplaySummary_pending = 3;
 	
 	let vals = {
 		grades: null,
@@ -61,7 +61,8 @@ function DisplaySummary(config){
 		
 		let results = {
 			grades: null,
-			attendance:null
+			attendance:null,
+			student:null
 		};
 		
 
@@ -88,13 +89,27 @@ function DisplaySummary(config){
 				console.log(err);
 			});
 		
-		
         db.query('metrics/attendance', JSON.clone(opts))
             .then( function(result){
 				DisplaySummary_pending--;
 				if(result.rows.length === 0) return;
 				
 				results.attendance = result.rows;
+				dataHandler(results);
+			});
+		
+		opts = {
+		    //reduce:false,
+		    //include_docs:true,
+			group:true,
+			group_level:3,
+		};
+        db.query('metrics/students', JSON.clone(opts))
+            .then( function(result){
+				DisplaySummary_pending--;
+				if(result.rows.length === 0) return;
+				
+				results.student = result.rows;
 				dataHandler(results);
 			});
 
@@ -130,8 +145,13 @@ function DisplaySummary(config){
 				agg[d.key[1]].attendance = (d.value.sum/d.value.count);
 				return agg;
 			},results.agg);
+		results.agg = results.student.reduce(function(agg,d){
+				agg[d.key[0]].student = d.key.slice(1).join(', ');
+				return agg;
+			},results.agg);
 		
-		node.innerHTML = Object.values(results.agg).map(function(d){
+		node.innerHTML = Object.values(results.agg)
+			.map(function(d){
 				let grade = d.grade.grade; 
 				grade = thresholds
 					// get the 
@@ -153,9 +173,23 @@ function DisplaySummary(config){
 					})
 					[0].status.name
 					;
+				return {
+						gradeAlert: grade,
+						attendAlert: attend,
+						id: d.id,
+						student: d.student,
+						grade: d.grade.grade,
+						attend: d.attendance,
+					};
+			})
+			.sort(function(a,b){
+				return a.student.localeCompare(b.student);
+			})
+			.map(function(d){
 				let html = [
-						" <td><span class='indicator alert-"+grade+"' > </span>" + (d.grade.grade * 100).toFixed(0) + "%</td>",
-						" <td><span class='indicator alert-"+attend+"' > </span>" + (d.attendance*100).toFixed(0) + "%</td>",
+						" <td><span class='indicator alert-"+d.gradeAlert+"' > </span>" + (d.grade * 100).toFixed(0) + "%</td>",
+						" <td><span class='indicator alert-"+d.attendAlert+"' > </span>" + (d.attend*100).toFixed(0) + "%</td>",
+						" <td>" + d.student + "</td>",
 						" <td>" + d.id + "</td>",
 					].join('');
 				html = `<tr>${html}</tr>`;
