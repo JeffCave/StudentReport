@@ -1,0 +1,82 @@
+@CHARSET "UTF-8";
+
+@import url('https://fonts.googleapis.com/css?family=Cabin+Sketch|Lora|Open+Sans');
+
+*{
+    position:relative;
+}
+
+body{
+    font-family: 'Lora', serif;
+    font-family: 'Cabin Sketch', cursive;
+    font-family: 'Open Sans', sans-serif;
+}
+
+svg {
+	font: 14px 'Open Sans';
+}
+
+th{
+    text-align:left;
+}
+
+details > div {
+	display:inline-block;
+	margin:1em;
+}
+
+.indicator{
+    position:relative;
+    display:inline-block;
+    border:0.1em solid black;
+    
+    min-height:0.8em;
+    min-width:0.8em;
+    border-radius:0.4em;
+    
+    background-color:white;
+    color:white;
+    font-weight:bold;
+}
+.alert-success{
+    background-color:green;
+}
+
+.alert-danger{
+    background-color:Firebrick;
+}
+.alert-warn{
+    background-color:darkorange;
+}
+.alert-fail{
+    background-color:black;
+}
+
+#prog{
+	display:block;
+	position:relative;
+	height:15px;
+	width:100%;
+}
+
+body > details > summary {
+    vertical-align:middle;
+}
+summary > h1{
+    display:inline-block;
+}
+summary > h2{
+    display:inline-block;
+}
+body > details > summary > sub{
+    position:relative;
+    margin-left:1em;
+    vertical-align:baseline;
+}
+
+
+@media print {
+    * {
+        -webkit-print-color-adjust: exact; 
+    }
+}
