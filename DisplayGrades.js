@@ -1,6 +1,6 @@
 'use strict';
 let DisplayGrades_pending = false;
-function DisplayGrades(config){
+function DisplayGrades(config, renderer){
     config = config || {};
 	if(config.force){
 		DisplayGrades_pending = false;
@@ -29,6 +29,11 @@ function DisplayGrades(config){
         }
         
     ];
+	
+	let RenderData = renderer || function(results){
+		RenderStatusDot(results.finalRec);
+		RenderGradeChart(results);
+	}
 	
 	function queryData(dataHandler){
 		let params = app.config;
@@ -415,11 +420,6 @@ function DisplayGrades(config){
 					' Q ',xToday,',',height,' ',xToday,',',height
 					].join(''))
 			;
-	}
-	
-	function RenderData(results){
-		RenderStatusDot(results.finalRec);
-		RenderGradeChart(results);
 	}
 	
 	setTimeout(function(){queryData(RenderData);},1000);

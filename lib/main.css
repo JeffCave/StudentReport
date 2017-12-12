@@ -25,6 +25,19 @@ details > div {
 	margin:1em;
 }
 
+.indicator{
+    position:relative;
+    display:inline-block;
+    border:0.1em solid black;
+    
+    min-height:0.8em;
+    min-width:0.8em;
+    border-radius:0.4em;
+    
+    background-color:white;
+    color:white;
+    font-weight:bold;
+}
 .alert-success{
     background-color:green;
 }
@@ -59,19 +72,6 @@ body > details > summary > sub{
     position:relative;
     margin-left:1em;
     vertical-align:baseline;
-}
-body > details > summary > span{
-    position:relative;
-    display:inline-block;
-    border:0.1em solid black;
-    
-    min-height:0.8em;
-    min-width:0.8em;
-    border-radius:0.4em;
-    
-    background-color:white;
-    color:white;
-    font-weight:bold;
 }
 
 

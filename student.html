@@ -20,15 +20,14 @@
  <script src="./DisplayGrades.js"></script>
  <script src="./DisplayGradeAttend.js"></script>
  <script src="./DisplayStudent.js"></script>
- 
-
+ <script src="./DisplaySummary.js"></script>
  
 </head>
 <body onload="app.init();">
 
 <progress id="prog" max="1" value="1" ></progress>
 
-<details open="open">
+<details>
  <summary>Options</summary>
  <div>
   <input type="date" id="today" />
@@ -90,6 +89,10 @@
  </div>
  <div>
  </div>
+</details>
+
+<details id='studentsummary' open>
+ <summary><h1>All Students</h1></summary>
 </details>
 
 <details id='studentdata'>
