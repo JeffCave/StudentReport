@@ -135,6 +135,17 @@ StudentReport.metrics.views = {
         }.toString(),
         reduce:"_count"
     },
+    
+	'courses': {
+		map: function(doc) {
+			// determine if the object belongs in this listing
+			if (!doc.course) return;
+			if (doc.isConfig) return;
+			
+			emit(doc.course,doc.course);
+		}.toString(),
+		reduce:"_count",
+	},
 
 };
 

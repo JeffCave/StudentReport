@@ -12,6 +12,19 @@ body{
     font-family: 'Open Sans', sans-serif;
 }
 
+select, input, button{
+    display:block;
+    border:1px solid lightgray;
+    border-radius: 0.5em;
+}
+button{
+    display:inline;
+}
+label{
+    display:block;
+    margin-top:0.5em;
+}
+
 svg {
 	font: 14px 'Open Sans';
 }
@@ -74,6 +87,10 @@ body > details > summary > sub{
     vertical-align:baseline;
 }
 
+#studentsummary tr.selected td {
+    border:1px solid black;
+    background-color:lightgray;
+}
 
 @media print {
     * {

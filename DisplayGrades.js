@@ -44,8 +44,8 @@ function DisplayGrades(config, renderer){
 		    //include_docs:true,
 			group:true,
 			group_level:3,
-			startkey:['logprog',params.student],
-			endkey:['logprog',params.student,{}],
+			startkey:[params.group,params.student],
+			endkey:[params.group,params.student,{}],
 		};
 		
 		db.query('metrics/gradesByDate', opts)
