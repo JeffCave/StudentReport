@@ -71,8 +71,15 @@ details > div {
 	height:15px;
 	width:100%;
 }
-
-body > details > summary {
+/*
+main {
+    display:flex;
+}
+main > details{
+    align-items:stretch;
+}
+*/
+main > details > summary {
     vertical-align:middle;
 }
 summary > h1{

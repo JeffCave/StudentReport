@@ -1,4 +1,11 @@
 'use strict';
+
+/* 
+global app: this is the main applicaiton 
+global db: database
+global d1: a shortcut I create for the 'document'
+*/
+
 let DisplaySummary_pending = 0;
 function DisplaySummary(config){
 	config = config || app.confg || {};
@@ -10,9 +17,12 @@ function DisplaySummary(config){
 	}
 	DisplaySummary_pending = 3;
 	
+	let params = null;
+	
 	let vals = {
 		grades: null,
-		attendance:null
+		attendance:null,
+		students:null,
 	};
 	
 	const thresholds = [
@@ -53,11 +63,10 @@ function DisplaySummary(config){
         }
         
     ];
-
+	
 	
 	function queryData(dataHandler){
-		let params = app.config;
-		let effective = params.effective;
+		params = JSON.clone(app.config);
 		
 		let results = {
 			grades: null,
@@ -65,10 +74,9 @@ function DisplaySummary(config){
 			student:null
 		};
 		
-
 		let opts = {
-		    //reduce:false,
-		    //include_docs:true,
+			//reduce:false,
+			//include_docs:true,
 			group:true,
 			group_level:2,
 			startkey:[params.group],
@@ -83,14 +91,14 @@ function DisplaySummary(config){
 				// Call the Data Handler
 				results.grades = result.rows;
 				dataHandler(results);
-
+				
 			})
 			.catch(function(err){
 				console.log(err);
 			});
 		
-        db.query('metrics/attendance', JSON.clone(opts))
-            .then( function(result){
+		db.query('metrics/attendance', JSON.clone(opts))
+			.then( function(result){
 				DisplaySummary_pending--;
 				if(result.rows.length === 0) return;
 				
@@ -99,20 +107,20 @@ function DisplaySummary(config){
 			});
 		
 		opts = {
-		    //reduce:false,
-		    //include_docs:true,
+			//reduce:false,
+			//include_docs:true,
 			group:true,
 			group_level:3,
 		};
-        db.query('metrics/students', JSON.clone(opts))
-            .then( function(result){
+		db.query('metrics/students', JSON.clone(opts))
+			.then( function(result){
 				DisplaySummary_pending--;
 				if(result.rows.length === 0) return;
 				
 				results.student = result.rows;
 				dataHandler(results);
 			});
-
+		
 	}
 	
 	/**
@@ -232,6 +240,9 @@ function DisplaySummary(config){
 				node.tBodies[0].appendChild(d);
 			})
 			;
+		node = d1.querySelector("#studentsummary summary h1");
+		node.innerText = params.group;
+		
 	}
 	
 	let timeout = 1000;
