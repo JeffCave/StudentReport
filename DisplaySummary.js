@@ -155,7 +155,11 @@ function DisplaySummary(config){
 				agg[d.key[1]].attendance = (d.value.sum/d.value.count);
 				return agg;
 			},results.agg);
-		results.agg = results.student.reduce(function(agg,d){
+		results.agg = results.student
+			.filter(function(d){
+				return results.agg.hasOwnProperty(d.key[0]);
+			})
+			.reduce(function(agg,d){
 				agg[d.key[0]].student = d.key.slice(1).join(', ');
 				return agg;
 			},results.agg);
