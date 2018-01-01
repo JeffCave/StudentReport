@@ -30,18 +30,52 @@
 <details>
  <summary>Options</summary>
  <div>
-  <input type="date" id="today" />
   <select id="course"></select>
+  <output id='showtoday' for='today'></output>
+  <input type="range" id="today" min='1' max='100' value='1' list='alldays' />
+  <datalist id='alldays'></datalist>
   <button id="dbReset">Reset DB</button>
   <script>
     /* global d3, global db, global app, global constants*/
     d3.select('#today').property("value",constants.today).on('change',function(){
-            app.config.effective = d3.event.target.value;
+            let date = new Date();
+            date.setTime(d3.event.target.value);
+            date = date.toISOString().substr(0,10);
+            let output = d1.querySelector('#showtoday');
+            output.value = date;
+            app.config.effective = output.value;
             app.RedrawData();
         });
     d3.select('#course').property("value",constants.today).on('change',function(){
             if(app.config.group === d3.event.target.value) return;
             app.config.group = d3.event.target.value;
+            let opts = {
+                reduce:false,
+                startkey:app.config.group,
+                endkey:app.config.group,
+            };
+            db.query('metrics/courses', opts)
+                .then(function(rec){
+                    if(rec.rows.length <= 0) return;
+                    let today = d1.querySelector('#today');
+                    today.min = rec.rows[0].value.min;
+                    today.max = rec.rows[0].value.max;
+                    let html = rec.rows
+                        .reduce(function(a,d){
+                            if(0 > a.indexOf(d.value.min)){ a.push(d.value.min); }
+                            return a;
+                        },[])
+                        .sort(function(a,b){return b-a;})
+                        .map(function(d){
+                            today.min = Math.min(today.min, d);
+                            today.max = Math.max(today.max, d);
+                            return "<option value='" + d +"' />";
+                        })
+                        .join('')
+                        ;
+                    today.value = today.max;
+                    d1.querySelector('#alldays').innerHTML = html;
+                });
             app.RedrawData();
         });
     app.initOptions(); 

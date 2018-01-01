@@ -142,9 +142,23 @@ StudentReport.metrics.views = {
 			if (!doc.course) return;
 			if (doc.isConfig) return;
 			
-			emit(doc.course,doc.course);
+			let date = doc.date || null;
+			if(date){
+				date = (new Date(date)).getTime();
+			}
+			emit(doc.course,{
+					min:date,
+					max:date
+				});
 		}.toString(),
-		reduce:"_count",
+		reduce: function(keys,values,rereduce){
+			let val = values.reduce(function(agg,d){
+					agg.min = Math.min(agg.min, d.min || agg.min);
+					agg.max = Math.max(agg.max, d.max || agg.max);
+					return agg;
+				},JSON.clone(values[0]));
+			return val;
+		}.toString()
 	},
 
 };
