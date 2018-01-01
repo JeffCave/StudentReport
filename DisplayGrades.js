@@ -14,24 +14,23 @@ function DisplayGrades(config, renderer){
 	DisplayGrades_pending = true;
 	
 	const thresholds = [
-        {
-            minrate:0.81,
-            status:app.statuses.success,
-        },
-        {
-            minrate:0.72,
-            status:app.statuses.warn,
-        },
-        {
-            minrate:0.57,
-            status:app.statuses.danger,
-        },
-        {
-            minrate:0,
-            status:app.statuses.fail,
-        }
-        
-    ];
+		{
+			minrate:0.81,
+			status:app.statuses.success,
+		},
+		{
+			minrate:0.72,
+			status:app.statuses.warn,
+		},
+		{
+			minrate:0.57,
+			status:app.statuses.danger,
+		},
+		{
+			minrate:0,
+			status:app.statuses.fail,
+		}
+	];
 	
 	let RenderData = renderer || function(results){
 		RenderStatusDot(results.finalRec);
@@ -133,10 +132,12 @@ function DisplayGrades(config, renderer){
 				if(!results.finalRec){
 					results.finalRec = results.values[results.values.length-1];
 					results.finalRec = {
-							date: results.finalRec.key[2],
-							possible: results.finalRec.value.grade,
-							avg: results.finalRec.value.grade,
-							pct: results.finalRec.value.grade,
+							'date'     : results.finalRec.key[2],
+							'possible' : results.finalRec.value.grade,
+							'tangible' : results.finalRec.value.grade,
+							'probable' : results.finalRec.value.grade,
+							'pct'      : results.finalRec.value.pct,
+							'of'       : results.finalRec.value.of,
 						};
 					results.projections.push(results.finalRec);
 				}
