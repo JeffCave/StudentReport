@@ -20,8 +20,8 @@ function DisplayGradeAttend(force){
 		    //include_docs:true,
 			group:true,
 			group_level:2,
-			startkey:['logprog'],
-			endkey:['logprog',{}],
+			startkey:[params.group],
+			endkey:[params.group,{}],
 		};
 		db.query('metrics/attendance', opts)
 			.then( function(result){
@@ -39,8 +39,8 @@ function DisplayGradeAttend(force){
         		    //include_docs:true,
         			group:true,
         			group_level:2,
-        			startkey:['logprog'],
-        			endkey:['logprog',{}],
+        			startkey:[params.group],
+        			endkey:[params.group,{}],
         		};
         		db.query('metrics/gradesByDate', opts)
         			.then( function(result){

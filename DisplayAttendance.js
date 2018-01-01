@@ -2,10 +2,12 @@
 'use strict';
 
 let DisplayAttendance_pending = false;
-function DisplayAttendance(force){
-    let override = force || false;
-    if(override){
+function DisplayAttendance(config){
+    config = config || app.config || {};
+    config.wait = config.wait || 1000;
+    if(config.force){
         DisplayAttendance_pending = false;
+        config.wait = 1;
     }
     if(DisplayAttendance_pending){
         return;
@@ -41,8 +43,8 @@ function DisplayAttendance(force){
             //include_docs:true,
             group:true,
             group_level:2,
-            startkey:['logprog',params.student],
-            endkey:['logprog',params.student].concat(params.effective.split('-')),
+            startkey:[params.group,params.student],
+            endkey:[params.group,params.student].concat(params.effective.split('-')),
         };
         db.query('metrics/attendance', JSON.clone(opts))
             .then( function(result){
@@ -67,7 +69,7 @@ function DisplayAttendance(force){
             });
 
         opts.group_level = 5;
-        opts.endkey = ['logprog',params.student,{}];
+        opts.endkey = [params.group,params.student,{}];
 		db.query('metrics/attendance', JSON.clone(opts))
             .then( function(result){
                 DisplayAttendance_pending = false;
@@ -158,5 +160,5 @@ function DisplayAttendance(force){
             });
         
 
-    },1000);
+    },config.wait);
 }

@@ -1,9 +1,13 @@
 /*eslint-disable no-implicit-coercion, no-param-reassign, no-extra-parens, no-unused-params*/
 'use strict';
-function processGrades(dataurl,db){
+function processGrades(course,dataurl,db){
 	
 	let header = [];
 	let grades = [];
+	
+	if("string" !== typeof course){
+		throw new Error("'course' must be a textual description");
+	}
 	
 	const idFlds = [
 		'OrgDefinedId',
@@ -132,6 +136,7 @@ function processGrades(dataurl,db){
 				d.weight = d.grade.weight;
 				d.grade = d.grade.grade;
 				d.student = student;
+				d.course = course;
 				return d;
 			})
 			.filter((d)=>{
@@ -193,7 +198,7 @@ function processGrades(dataurl,db){
 			
 		ProgBar.start(grades.length);
 		grades.forEach(function(rec){
-			let key = ["grade","logprog",rec.student.Username,rec.cat,rec.item,rec.date].join(app.KeyDelim);
+			let key = ["grade",rec.course,rec.student.Username,rec.cat,rec.item,rec.date].join(app.KeyDelim);
 			db.upsert(key, function(doc){
 				//if (!rec.date && !doc.date) return false;
 				

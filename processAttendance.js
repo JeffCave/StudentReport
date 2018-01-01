@@ -1,7 +1,11 @@
 'use strict';
-function processAttend(dataurl,db){
-
-
+function processAttend(course,dataurl,db){
+	if("string" !== typeof course){
+		throw new Error("'course' must be a textual description");
+	}
+	
+	
+	
 	let attendance = [];
 	
 	const idFlds = [
@@ -32,12 +36,13 @@ function processAttend(dataurl,db){
 					//console.debug("=2="+date);
 					date = date.toISOString().substr(0,10);
 					//console.debug("=3="+date);
-					let id = ['attend',"logprog",student.username]
-					   .concat(date.split('-'))
-					   .join(app.KeyDelim)
-					   ;
+					let id = ['attend',course,student.username]
+						.concat(date.split('-'))
+						.join(app.KeyDelim)
+						;
 					let attend ={
-					    _id:id,
+						_id:id,
+						course:course,
 						student:student,
 						date:date,
 						attendance:['A','P'].indexOf(d),

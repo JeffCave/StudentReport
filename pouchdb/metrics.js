@@ -135,6 +135,31 @@ StudentReport.metrics.views = {
         }.toString(),
         reduce:"_count"
     },
+    
+	'courses': {
+		map: function(doc) {
+			// determine if the object belongs in this listing
+			if (!doc.course) return;
+			if (doc.isConfig) return;
+			
+			let date = doc.date || null;
+			if(date){
+				date = (new Date(date)).getTime();
+			}
+			emit(doc.course,{
+					min:date,
+					max:date
+				});
+		}.toString(),
+		reduce: function(keys,values,rereduce){
+			let val = values.reduce(function(agg,d){
+					agg.min = Math.min(agg.min, d.min || agg.min);
+					agg.max = Math.max(agg.max, d.max || agg.max);
+					return agg;
+				},JSON.clone(values[0]));
+			return val;
+		}.toString()
+	},
 
 };
 

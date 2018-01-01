@@ -30,24 +30,36 @@
 <details>
  <summary>Options</summary>
  <div>
-  <input type="date" id="today" />
-  <br />
-  <select id="student">
-  </select>
-  <br />
+  <select id="course"></select>
+  <output id='showtoday' for='today'></output>
+  <input type="range" id="today" min='1' max='100' value='1' list='alldays' />
+  <datalist id='alldays'></datalist>
   <button id="dbReset">Reset DB</button>
   <script>
+    /* global d1, 
+       global d3, 
+       global db, 
+       global app, 
+       global constants
+    */
     d3.select('#today').property("value",constants.today).on('change',function(){
-            app.config.effective = d3.event.target.value;
+            let date = new Date();
+            date.setTime(d3.event.target.value);
+            date = date.toISOString().substr(0,10);
+            let output = d1.querySelector('#showtoday');
+            output.value = date;
+            app.config.effective = output.value;
             app.RedrawData();
         });
-    d3.select('#student').property("value",constants.today).on('change',function(){
-            app.config.student = d3.event.target.value;
-            app.RedrawData();
+    d3.select('#course').property("value",constants.today).on('change',function(){
+            app.setCourse(d3.event.target.value);
         });
     app.initOptions(); 
     d3.select('#dbReset')
         .on("click", function() {
+            if(false === confirm('Are you sure you wish \nto wipe all data?')){
+                return;
+            }
             d3.select("body").html("Clearing cache...");
             db.destroy()
                 .then(function(){
@@ -60,9 +72,12 @@
   </script>
  </div>
  <div>
-  Grades<br />
+  <label>Class</label>
+  <input id='courseName' list='courseNames' type='text' placeholder='PROG1700-2017F-L' title='The "Class" is a means of identifying a group of students. This is really \ntoo generic, and therefore requires some thought. Currently, it is suggested that you specify the course number (PROG1700), the semester (2017F), and the class (L - Link).' />
+  <datalist id='courseNames'></datalist>
+  <label>Grades</label>
   <input id="fileGrades" type="file" accept=".csv" /><br />
-  Attendance<br />
+  <label>Attendance</label>
   <input id="fileAttend" type="file" accept=".csv" />
   <script>
     d3.select('#fileGrades')
@@ -70,7 +85,8 @@
             let reader = new FileReader();
             reader.onloadend = function(evt) {
                 let dataUrl = evt.target.result;
-                processGrades(dataUrl,db);
+                let course = d1.querySelector('#courseName').value;
+                processGrades(course,dataUrl,db);
             };
             let file = d3.event.target.files[0];
             reader.readAsDataURL(file);
@@ -80,7 +96,8 @@
             let reader = new FileReader();
             reader.onloadend = function(evt) {
                 let dataUrl = evt.target.result;
-                processAttend(dataUrl,db);
+                let course = d1.querySelector('#courseName').value;
+                processAttend(course,dataUrl,db);
             };
             let file = d3.event.target.files[0];
             reader.readAsDataURL(file);
@@ -91,20 +108,13 @@
  </div>
 </details>
 
+<main>
 <details id='studentsummary'>
  <summary><h1>All Students</h1></summary>
 </details>
 
 <details id='studentdata'>
  <summary><h1><!-- Student Name --></h1></summary>
-</details>
-
-<details id="studentgrades" open>
- <summary>
-    <span class='indicator'></span>
-    <h2>Grades</h2>
-    <sub></sub>
- </summary>
 </details>
 
 <details id="studentattendace" open>
@@ -142,6 +152,14 @@
  </style>
 </details>
 
+<details id="studentgrades" open>
+ <summary>
+    <span class='indicator'></span>
+    <h2>Grades</h2>
+    <sub></sub>
+ </summary>
+</details>
 
+</main>
 </body>
 </html>

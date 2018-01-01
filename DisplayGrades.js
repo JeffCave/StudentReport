@@ -1,7 +1,10 @@
 'use strict';
+
+/* global app d3 d1 moment db*/
+
 let DisplayGrades_pending = false;
 function DisplayGrades(config, renderer){
-    config = config || {};
+	config = config || {};
 	if(config.force){
 		DisplayGrades_pending = false;
 	}
@@ -11,41 +14,40 @@ function DisplayGrades(config, renderer){
 	DisplayGrades_pending = true;
 	
 	const thresholds = [
-        {
-            minrate:0.81,
-            status:app.statuses.success,
-        },
-        {
-            minrate:0.72,
-            status:app.statuses.warn,
-        },
-        {
-            minrate:0.57,
-            status:app.statuses.danger,
-        },
-        {
-            minrate:0,
-            status:app.statuses.fail,
-        }
-        
-    ];
+		{
+			minrate:0.81,
+			status:app.statuses.success,
+		},
+		{
+			minrate:0.72,
+			status:app.statuses.warn,
+		},
+		{
+			minrate:0.57,
+			status:app.statuses.danger,
+		},
+		{
+			minrate:0,
+			status:app.statuses.fail,
+		}
+	];
 	
 	let RenderData = renderer || function(results){
 		RenderStatusDot(results.finalRec);
 		RenderGradeChart(results);
-	}
+	};
 	
 	function queryData(dataHandler){
 		let params = app.config;
 		let effective = params.effective;
 		
 		let opts = {
-		    //reduce:false,
-		    //include_docs:true,
+			//reduce:false,
+			//include_docs:true,
 			group:true,
 			group_level:3,
-			startkey:['logprog',params.student],
-			endkey:['logprog',params.student,{}],
+			startkey:[params.group,params.student],
+			endkey:[params.group,params.student,{}],
 		};
 		
 		db.query('metrics/gradesByDate', opts)
@@ -79,20 +81,31 @@ function DisplayGrades(config, renderer){
 					else{
 						d.value.pct = last.value.pct;
 						d.value.grade = last.value.grade;
+						let projection = null;
 						if(!results.projections.length){
-							results.projections.unshift({
-								date: constants.today,
-								possible: last.value.grade,
-								avg: last.value.grade,
-								pct: d.value.pct,
-							});
+							projection = {
+								'date'     : results.effective,
+								'possible' : last.value.grade,
+								'tangible' : last.value.grade,
+								'probable' : last.value.grade,
+								//'pct'      : last.value.grade / last.value.of,
+								//'of'       : last.value.of,
+								'pct'      : last.value.grade / d.value.of,
+								'of'       : d.value.of,
+							};
+							results.projections.unshift(projection);
 						}
-						results.projections.unshift({
-							date: d.key[2],
-							possible: results.projections[0].possible + (d.value.of - last.value.of),
-							avg: results.projections[0].pct * d.value.of,
-							pct: results.projections[0].pct,
-						});
+						
+						let lastProjection = results.projections[0];
+						projection = {
+							'date'     : d.key[2],
+							'possible' : lastProjection.possible + (d.value.of - lastProjection.of),
+							'tangible' : lastProjection.tangible,
+							'probable' : lastProjection.pct * d.value.of,
+							'pct'      : lastProjection.pct,
+							'of'       : d.value.of,
+						};
+						results.projections.unshift(projection);
 					}
 					
 					let enddate = app.parseDate(last.key[2]);
@@ -105,6 +118,7 @@ function DisplayGrades(config, renderer){
 					while(fill.length > 0){
 						a.push(fill.pop());
 					}
+					
 					return a;
 				},[]);
 				
@@ -116,12 +130,14 @@ function DisplayGrades(config, renderer){
 				// Final Record
 				results.finalRec = results.projections[0];
 				if(!results.finalRec){
-				    results.finalRec = results.values[results.values.length-1];
-				    results.finalRec = {
-							date: results.finalRec.key[2],
-							possible: results.finalRec.value.grade,
-							avg: results.finalRec.value.grade,
-							pct: results.finalRec.value.grade,
+					results.finalRec = results.values[results.values.length-1];
+					results.finalRec = {
+							'date'     : results.finalRec.key[2],
+							'possible' : results.finalRec.value.grade,
+							'tangible' : results.finalRec.value.grade,
+							'probable' : results.finalRec.value.grade,
+							'pct'      : results.finalRec.value.pct,
+							'of'       : results.finalRec.value.of,
 						};
 					results.projections.push(results.finalRec);
 				}
@@ -144,17 +160,17 @@ function DisplayGrades(config, renderer){
 		node.innerHTML = [
 				"<table>",
 				" <tr><th>Possible</th><td>",(finalGrades.possible * 100.0).toFixed(1) + "%</td></tr>",
-				" <tr><th>Probable</th><td>",(finalGrades.avg * 100.0).toFixed(1) + "%</td></tr>",
-				" <tr><th>Tangible</th><td>",(finalGrades.pct * 100.0).toFixed(1) + "%</td></tr>",
+				" <tr><th>Probable</th><td>",(finalGrades.probable * 100.0).toFixed(1) + "%</td></tr>",
+				" <tr><th>Tangible</th><td>",(finalGrades.tangible * 100.0).toFixed(1) + "%</td></tr>",
 				"</table>"
 			].join('');
-		node.innerHTML = (finalGrades.avg * 100.0).toFixed(1) + "%";
+		node.innerHTML = (finalGrades.probable * 100.0).toFixed(1) + "%";
 		
 		node = d1.querySelector("#studentgrades summary span.indicator");
 		node.className = "indicator alert-" + thresholds
 			// get the 
 			.filter(function(d){
-				return d.minrate <= finalGrades.avg;
+				return d.minrate <= finalGrades.probable;
 			})
 			.sort(function(a,b){
 				return b.minrate - a.minrate;
@@ -171,24 +187,26 @@ function DisplayGrades(config, renderer){
 		//console.log(result);
 		//console.log(projections);
 		
+		let svgParams = {};
+		
 		// Set the dimensions of the canvas / graph
-		let margin = {top: 30, right: 50, bottom: 30, left: 20};
-		let width = 600 - margin.left - margin.right;
-		let height = 480 - margin.top - margin.bottom;
+		svgParams.margin = {top: 30, right: 50, bottom: 30, left: 20};
+		svgParams.width = 600 - svgParams.margin.left - svgParams.margin.right;
+		svgParams.height = 480 - svgParams.margin.top - svgParams.margin.bottom;
 		
 		// Set the ranges
-		let x = d3.scaleTime().range([0, width]);
-		let y = d3.scaleLinear().range([height, 0]);
+		svgParams.x = d3.scaleTime().range([0, svgParams.width]);
+		svgParams.y = d3.scaleLinear().range([svgParams.height, 0]);
 		// Scale the range of the data
-		x.domain(d3.extent(data.values, function(d) { 
+		svgParams.x.domain(d3.extent(data.values, function(d) { 
 			return app.parseDate(d.key[2]); 
 		}));
-		y.domain([0, 1]);
+		svgParams.y.domain([0, 1]);
 		
 		
 		// Define the axes
-		let xAxis = d3.axisBottom().scale(x).ticks(5);
-		let yAxis = d3.axisRight().scale(y).ticks(5);
+		let xAxis = d3.axisBottom().scale(svgParams.x).ticks(5);
+		let yAxis = d3.axisRight().scale(svgParams.y).ticks(5);
 		
 		// Define the line
 		let lineOf = d3.line()
@@ -196,44 +214,44 @@ function DisplayGrades(config, renderer){
 			.x(function(d) {
 				let rtn = d.key[2];
 				rtn = moment(rtn);
-				rtn = x(rtn.toDate());
+				rtn = svgParams.x(rtn.toDate());
 				return rtn;
 			})
 			.y(function(d) { 
-				return y(d.value.of); 
+				return svgParams.y(d.value.of); 
 			})
 			;
 		let lineGrade = d3.line()
 			.curve(d3.curveStepBefore)
 			.x(function(d) { 
 				d = app.parseDate(d.key[2]); 
-				return x(d); 
+				return svgParams.x(d); 
 			})
-			.y(function(d) { return y(d.value.grade); })
+			.y(function(d) { return svgParams.y(d.value.grade); })
 			;
 		let linePossible = d3.line()
-			.curve(d3.curveCatmullRom)
+			//.curve(d3.curveCatmullRom)
 			.x(function(d) {
 				d = app.parseDate(d.date); 
-				d = x(d);
+				d = svgParams.x(d);
 				return d; 
 			})
 			.y(function(d) {
 				d = d.possible;
-				d = y(d);
+				d = svgParams.y(d);
 				return d;
 			})
 			;
 		let lineExpected = d3.line()
-			.curve(d3.curveCatmullRom)
+			//.curve(d3.curveCatmullRom)
 			.x(function(d) {
 				d = app.parseDate(d.date); 
-				d = x(d);
+				d = svgParams.x(d);
 				return d; 
 			})
 			.y(function(d) {
-				d = d.avg;
-				d = y(d);
+				d = d.probable;
+				d = svgParams.y(d);
 				return d;
 			})
 			;
@@ -245,10 +263,10 @@ function DisplayGrades(config, renderer){
 		}
 		svg = d3.select("#studentgrades")
 			.append("svg")
-				.attr("width", width + margin.left + margin.right)
-				.attr("height", height + margin.top + margin.bottom)
+				.attr("width", svgParams.width + svgParams.margin.left + svgParams.margin.right)
+				.attr("height", svgParams.height + svgParams.margin.top + svgParams.margin.bottom)
 			.append("g")
-				.attr("transform","translate(" + margin.left + "," + margin.top + ")")
+				.attr("transform","translate(" + svgParams.margin.left + "," + svgParams.margin.top + ")")
 			;
 		
 		// Add the valueline path.
@@ -266,14 +284,14 @@ function DisplayGrades(config, renderer){
 		// Add the X Axis
 		svg.append("g")
 			.attr("class", "x axis")
-			.attr("transform", "translate(0," + height + ")")
+			.attr("transform", "translate(0," + svgParams.height + ")")
 			.call(xAxis)
 			;
 		
 		// Add the Y Axis
 		svg.append("g")
 			.attr("class", "y axis")
-			.attr("transform", "translate("+width+",0)")
+			.attr("transform", "translate("+svgParams.width+",0)")
 			.call(yAxis)
 			;
 		
@@ -283,11 +301,11 @@ function DisplayGrades(config, renderer){
 			d.date = date;
 			return d;
 		});
-		let randVals = data.projections.map((d,i)=>{
-			d = JSON.clone(d);
-			d.possible = (!i)?d.possible:Math.random();
-			return d;
-		});
+		//let randVals = data.projections.map((d,i)=>{
+		//	d = JSON.clone(d);
+		//	d.possible = (!i)?d.possible:Math.random();
+		//	return d;
+		//});
 		let accordianVals = data.projections.map((d,i)=>{
 			d = JSON.clone(d);
 			d.date = data.projections[0].date;
@@ -340,18 +358,18 @@ function DisplayGrades(config, renderer){
 				.attr("d", linePossible(gradeVals))
 			;
 		
-		RenderGradeChartTodayLine(svg, data, data.effective);
+		RenderGradeChartTodayLine(svg, data, svgParams);
 	}
 	
-	function RenderGradeChartTodayLine(svg, data, effective){
+	function RenderGradeChartTodayLine(svg, data, svgParams){
 		if(data.firstRec.date > data.effective) return;
 		if(data.finalRec.date < data.effective) return;
 		
 		// Today Line
-		let xToday = x(app.parseDate(effective));
+		let xToday = svgParams.x(app.parseDate(data.effective));
 		let todayMarker = svg
 			.selectAll('g#today')
-			.data([effective])
+			.data([data.effective])
 			;
 		let entry = todayMarker.enter()
 			.append('g')
@@ -362,7 +380,7 @@ function DisplayGrades(config, renderer){
 		entry.append('text')
 			.attr('font-size',10)
 			.attr('opacity',0)
-			.text(effective)
+			.text(data.effective)
 			;
 		let textSize = Array.from(document.querySelectorAll('g#today > text'))[0].getBoundingClientRect();
 		let rectSize = {
@@ -377,7 +395,7 @@ function DisplayGrades(config, renderer){
 			.attr('opacity',0)
 			.attr('x',rectSize.x+10)
 			.attr('y',14)
-			.text(effective)
+			.text(data.effective)
 			.transition()
 				.delay(1000)
 				.duration(1000)
@@ -409,15 +427,19 @@ function DisplayGrades(config, renderer){
 			.attr("stroke-width", 3)
 			.attr("fill","red")
 			.attr('opacity',0)
-			.attr('d', ['M',0,',',height,' Q ',xToday,',',height,' ',xToday,',',height,' Q ',xToday,',',height,' ',width,',',height].join(''))
+			.attr('d', [
+				'M',0,',',svgParams.height,
+				' Q ',xToday,',',svgParams.height,' ',xToday,',',svgParams.height,
+				' Q ',xToday,',',svgParams.height,' ',svgParams.width,',',svgParams.height
+				].join(''))
 			.transition()
 				.delay(100)
 				.duration(1000)
 				.attr('opacity', 1)
 				.attr('d', [
-					'M',xToday,',',height,
-					' Q ',xToday,',',height,' ',xToday,',',rectSize.height,
-					' Q ',xToday,',',height,' ',xToday,',',height
+					'M',xToday,',',svgParams.height,
+					' Q ',xToday,',',svgParams.height,' ',xToday,',',rectSize.height,
+					' Q ',xToday,',',svgParams.height,' ',xToday,',',svgParams.height
 					].join(''))
 			;
 	}
