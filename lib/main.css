@@ -103,4 +103,28 @@ body > details > summary > sub{
     * {
         -webkit-print-color-adjust: exact; 
     }
+    
+    body {
+    	font-size: small;
+    }
+	#prog{
+		display:none;
+	}
+	
+	#settings{
+		display:none;
+	}
+	
+	#studentsummary > * {
+		display:none;
+	}
+	
+	#studentsummary > summary{
+		display:block;
+	}
+	
+	body > details {
+		page-break-inside:avoid;
+	}
+	
 }
