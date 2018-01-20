@@ -99,6 +99,14 @@ body > details > summary > sub{
     background-color:lightgray;
 }
 
+circle{
+	fill:grey;
+}
+circle.current{
+	fill:darkblue;
+	z-index:10;
+}
+
 @media print {
     * {
         -webkit-print-color-adjust: exact; 
