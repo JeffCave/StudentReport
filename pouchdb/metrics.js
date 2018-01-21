@@ -107,7 +107,7 @@ StudentReport.metrics.views = {
                 vals = vals.map(function(d){
                     return {
                         sum:d||0,
-                        count:1,
+                        count:(d !== null) ? 1 : 0,
                     };
                 });
             }
